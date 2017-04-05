@@ -19,8 +19,7 @@ class Course(models.Model):
 class Recording(models.Model):
     name = models.CharField(max_length=200)
     date = models.DateTimeField()
-    media_url = models.FileField(upload_to=settings.UPLOAD_MEDIA_URL)
-    status = models.CharField(max_length=200, default="UPLOADED")
+    status = models.CharField(max_length=200, default="SUBMITTED")
     is_online = models.BooleanField(default=False)
     is_converted = models.BooleanField(default=False)
 
@@ -29,3 +28,12 @@ class Recording(models.Model):
 
     def __str__(self):
         return self.name
+
+class RecordingFile(models.Model):
+    recording = models.OneToOneField(
+        Recording,
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
+    upload_date = models.DateTimeField(auto_now=True)
+    file_url = models.FileField(upload_to=settings.UPLOAD_MEDIA_URL)

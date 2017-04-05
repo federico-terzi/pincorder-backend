@@ -71,7 +71,7 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="views.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="views.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/recorder_engine/views.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="629">
@@ -83,11 +83,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="models.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="models.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/recorder_engine/models.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="374">
-              <caret line="22" column="65" lean-forward="true" selection-start-line="22" selection-start-column="65" selection-end-line="22" selection-end-column="65" />
+            <state relative-caret-position="425">
+              <caret line="25" column="40" lean-forward="true" selection-start-line="25" selection-start-column="40" selection-end-line="25" selection-end-column="40" />
               <folding>
                 <element signature="e#0#28#0" expanded="true" />
               </folding>
@@ -122,10 +122,10 @@
         <option value="$PROJECT_DIR$/recorder_engine/admin.py" />
         <option value="$PROJECT_DIR$/audio_recorder/urls.py" />
         <option value="$PROJECT_DIR$/audio_recorder/settings.py" />
-        <option value="$PROJECT_DIR$/recorder_engine/serializers.py" />
         <option value="$PROJECT_DIR$/recorder_engine/urls.py" />
-        <option value="$PROJECT_DIR$/recorder_engine/models.py" />
         <option value="$PROJECT_DIR$/recorder_engine/views.py" />
+        <option value="$PROJECT_DIR$/recorder_engine/serializers.py" />
+        <option value="$PROJECT_DIR$/recorder_engine/models.py" />
       </list>
     </option>
   </component>
@@ -534,6 +534,16 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/recorder_engine/views.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="629">
+          <caret line="37" column="38" lean-forward="true" selection-start-line="37" selection-start-column="38" selection-end-line="37" selection-end-column="38" />
+          <folding>
+            <element signature="e#0#52#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/recorder_engine/serializers.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="187">
@@ -546,20 +556,10 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/recorder_engine/models.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="374">
-          <caret line="22" column="65" lean-forward="true" selection-start-line="22" selection-start-column="65" selection-end-line="22" selection-end-column="65" />
+        <state relative-caret-position="425">
+          <caret line="25" column="40" lean-forward="true" selection-start-line="25" selection-start-column="40" selection-end-line="25" selection-end-column="40" />
           <folding>
             <element signature="e#0#28#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/recorder_engine/views.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="629">
-          <caret line="37" column="38" lean-forward="true" selection-start-line="37" selection-start-column="38" selection-end-line="37" selection-end-column="38" />
-          <folding>
-            <element signature="e#0#52#0" expanded="true" />
           </folding>
         </state>
       </provider>
