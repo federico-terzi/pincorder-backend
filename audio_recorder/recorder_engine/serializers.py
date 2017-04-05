@@ -4,7 +4,12 @@ from .models import *
 class RecordingSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Recording
-        fields = ('name','date','course','status', 'media_url')
+        fields = ('id','name','date','course','status')
+
+class RecordingFileSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = RecordingFile
+        fields = ('recording', 'upload_date', 'file_url')
 
 class CourseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:

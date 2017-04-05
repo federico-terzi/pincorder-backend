@@ -37,3 +37,6 @@ class RecordingFile(models.Model):
     )
     upload_date = models.DateTimeField(auto_now=True)
     file_url = models.FileField(upload_to=settings.UPLOAD_MEDIA_URL)
+
+    def __str__(self):
+        return self.file_url.name
