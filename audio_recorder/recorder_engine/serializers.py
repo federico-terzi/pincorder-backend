@@ -1,17 +1,26 @@
 from rest_framework import serializers
 from .models import *
 
+
 class RecordingSerializer(serializers.HyperlinkedModelSerializer):
+    user = serializers.StringRelatedField()
+
     class Meta:
         model = Recording
-        fields = ('id','name','date','course','status')
+        fields = ('id', 'name', 'date', 'course', 'status', 'user')
+
 
 class RecordingFileSerializer(serializers.HyperlinkedModelSerializer):
+    recording = serializers.HyperlinkedRelatedField(view_name='recording-detail', read_only=True)
+
     class Meta:
         model = RecordingFile
-        fields = ('recording', 'upload_date', 'file_url')
+        fields = ('id', 'recording', 'upload_date', 'file_url')
+
 
 class CourseSerializer(serializers.HyperlinkedModelSerializer):
+    teacher = serializers.StringRelatedField()
+
     class Meta:
         model = Course
-        fields = ('name',)
+        fields = ('id', 'name', 'teacher')
