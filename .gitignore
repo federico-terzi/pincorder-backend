@@ -27,7 +27,6 @@ local.properties
 
 # PDT-specific
 .buildpath
-pincorder/media/raw_upload/*
 
 
 #################
@@ -216,5 +215,6 @@ pip-log.txt
 #Mr Developer
 .mr.developer.cfg
 audio_recorder/db.sqlite3
+pincorder/media/raw_upload/*
 
 .idea/
