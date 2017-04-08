@@ -125,5 +125,5 @@ STATIC_URL = '/static/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # Directory where raw recordings are stored
-UPLOAD_MEDIA_URL = os.path.join(MEDIA_ROOT, "raw_upload")
+UPLOAD_MEDIA_URL =  "raw_upload/"
 
