@@ -216,6 +216,6 @@ pip-log.txt
 .mr.developer.cfg
 pincorder/db.sqlite3
 pincorder/media/raw_upload/*
-
+pincorder/recorder_engine/migrations/*
 .idea/
 pincorder/pincorder/dbconf.py
