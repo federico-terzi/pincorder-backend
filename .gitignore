@@ -218,3 +218,4 @@ audio_recorder/db.sqlite3
 pincorder/media/raw_upload/*
 
 .idea/
+pincorder/pincorder/dbconf.py
