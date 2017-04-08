@@ -1,5 +1,4 @@
 from .settings import *
-from .dbconf import *
 
 DEBUG = False
 

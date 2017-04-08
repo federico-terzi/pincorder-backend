@@ -219,4 +219,3 @@ pincorder/media/raw_upload/*
 
 .idea/
 pincorder/pincorder/dbconf.py
-pincorder/db.sqlite3
