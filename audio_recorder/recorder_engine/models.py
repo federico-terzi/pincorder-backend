@@ -50,7 +50,7 @@ class Pin(models.Model):
     recording = models.ForeignKey('Recording', on_delete=models.CASCADE)
     time = models.IntegerField()
     text = models.CharField(max_length=500, blank=True)
-    media_url = models.ImageField(upload_to=settings.UPLOAD_MEDIA_URL, blank=True)
+    media_url = models.FileField(upload_to=settings.UPLOAD_MEDIA_URL, blank=True)
 
     def __str__(self):
         return "{recording} - {time}".format(recording=str(self.recording), time=self.time)
