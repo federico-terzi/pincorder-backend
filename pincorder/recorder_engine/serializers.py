@@ -19,7 +19,7 @@ class RecordingFileSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class CourseSerializer(serializers.HyperlinkedModelSerializer):
-    teacher = serializers.StringRelatedField()
+    teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all())
 
     class Meta:
         model = Course

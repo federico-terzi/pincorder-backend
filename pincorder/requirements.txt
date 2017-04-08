@@ -1,3 +1,4 @@
 markdown
 django
 djangorestframework
+django-oauth-toolkit

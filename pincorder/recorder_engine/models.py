@@ -11,7 +11,7 @@ class Teacher(models.Model):
 
 class Course(models.Model):
     name = models.CharField(max_length=200)
-    teacher = models.ForeignKey('Teacher')
+    teacher = models.ForeignKey('Teacher', blank=True, null=True)
     parent_course = models.ForeignKey('Course', blank=True, null=True)
 
     authorized_users = models.ManyToManyField('auth.user')

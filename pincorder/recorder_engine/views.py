@@ -7,6 +7,8 @@ from django.shortcuts import get_object_or_404
 
 from .serializers import *
 
+from oauth2_provider.ext.rest_framework import TokenHasReadWriteScope, TokenHasScope, permissions
+
 
 class RecordingViewSet(viewsets.ModelViewSet):
     """
@@ -61,10 +63,6 @@ class RecordingViewSet(viewsets.ModelViewSet):
     serializer_class = RecordingSerializer
 
     def get_queryset(self):
-        # If the user is not authenticated, raise an exception
-        if isinstance(self.request.user, AnonymousUser):
-            raise PermissionDenied()
-
         # Return the recordings of the current user
         return Recording.objects.filter(user=self.request.user)
 
@@ -73,9 +71,6 @@ class RecordingViewSet(viewsets.ModelViewSet):
         """
         Search for Recordings with a name containing the specified parameter
         """
-        # If the user is not authenticated, raise an exception
-        if isinstance(self.request.user, AnonymousUser):
-            raise PermissionDenied()
 
         # Make sure that the user passes the 'name' parameter, if not, raise an exception
         if 'name' not in self.request.query_params:
@@ -96,9 +91,6 @@ class RecordingViewSet(viewsets.ModelViewSet):
         """
         Return the file for the current Recording
         """
-        # If the user is not authenticated, raise an exception
-        if isinstance(self.request.user, AnonymousUser):
-            raise PermissionDenied()
 
         # Fetch the files for the current user and Recording id
         files = RecordingFile.objects.filter(recording__user_id=self.request.user) \
@@ -120,9 +112,6 @@ class RecordingViewSet(viewsets.ModelViewSet):
         """
         Return the status of the current recording
         """
-        # If the user is not authenticated, raise an exception
-        if isinstance(self.request.user, AnonymousUser):
-            raise PermissionDenied()
 
         # Get the recordings made by the user and having a name that contains the specified param
         recording = get_object_or_404(Recording.objects.filter(user=self.request.user), pk=pk)
@@ -174,9 +163,6 @@ class RecordingFileViewSet(viewsets.ModelViewSet):
         """
         Set the queryset for the current user 
         """
-        # If the user is not authenticated, raise an exception
-        if isinstance(self.request.user, AnonymousUser):
-            raise PermissionDenied()
 
         # Return the Files for the current user
         return RecordingFile.objects.filter(recording__user=self.request.user)
@@ -186,9 +172,6 @@ class RecordingFileViewSet(viewsets.ModelViewSet):
         """
         Return the file url for the specified Recording ID
         """
-        # If the user is not authenticated, raise an exception
-        if isinstance(self.request.user, AnonymousUser):
-            raise PermissionDenied()
 
         # Make sure that the user passes the 'id' parameter, if not, raise an exception
         if 'id' not in self.request.query_params:
@@ -211,16 +194,16 @@ class RecordingFileViewSet(viewsets.ModelViewSet):
 
 
 class CourseViewSet(viewsets.ModelViewSet):
-
     serializer_class = CourseSerializer
 
     def get_queryset(self):
         """
         Set the queryset for the current user 
         """
-        # If the user is not authenticated, raise an exception
-        if isinstance(self.request.user, AnonymousUser):
-            raise PermissionDenied()
 
         # Return the courses that the current user is authorized to view
         return Course.objects.filter(authorized_users__in=[self.request.user])
+
+    def perform_create(self, serializer):
+        course = serializer.save()
+        course.authorized_users.add(self.request.user)

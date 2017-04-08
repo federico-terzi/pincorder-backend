@@ -214,8 +214,9 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
-audio_recorder/db.sqlite3
+pincorder/db.sqlite3
 pincorder/media/raw_upload/*
 
 .idea/
 pincorder/pincorder/dbconf.py
+pincorder/db.sqlite3
