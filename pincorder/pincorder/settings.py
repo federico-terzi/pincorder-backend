@@ -29,7 +29,7 @@ if not IS_PRODUCTION:
 else:
     DEBUG = False
 
-ALLOWED_HOSTS = ['pincorder.freddytstudio.com']
+ALLOWED_HOSTS = ['pincorder.freddytstudio.com', 'localhost']
 
 
 # Application definition

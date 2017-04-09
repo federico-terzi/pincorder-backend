@@ -7,7 +7,7 @@ class RecordingSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Recording
-        fields = ('id', 'name', 'date', 'course', 'status', 'user')
+        fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'user', 'pin_set')
 
 
 class RecordingFileSerializer(serializers.HyperlinkedModelSerializer):
@@ -24,3 +24,12 @@ class CourseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Course
         fields = ('id', 'name', 'teacher')
+
+
+class PinSerializer(serializers.HyperlinkedModelSerializer):
+    recording = serializers.PrimaryKeyRelatedField(queryset=Recording.objects.all())
+
+    class Meta:
+        model = Pin
+        fields = ('recording', 'time', 'text', 'media_url')
+

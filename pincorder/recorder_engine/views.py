@@ -207,3 +207,15 @@ class CourseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         course = serializer.save()
         course.authorized_users.add(self.request.user)
+
+class PinViewSet(viewsets.ModelViewSet):
+
+    serializer_class = PinSerializer
+
+    def get_queryset(self):
+        """
+        Set the queryset for the current user 
+        """
+
+        # Return the pin user is authorized to see
+        return Pin.objects.filter(recording__user_id = self.request.user)
