@@ -24,9 +24,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'qvf3_zo7(+8h(tn$mp%lnw7%(vr+w(!h60cj8+qcxm+_egaw33'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+if not IS_PRODUCTION:
+    DEBUG = True
+else:
+    DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['pincorder.freddytstudio.com']
 
 
 # Application definition
@@ -84,7 +87,17 @@ if not IS_PRODUCTION:
             'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
         }
     }
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': 'pincorder',
+            'USER': DB_USER,
+            'PASSWORD': DB_PASSWORD,
+            'HOST': 'localhost',
+            'PORT': '',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators
@@ -122,6 +135,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
+STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
 STATIC_URL = '/static/'
 
 # Directory where media files are stored
