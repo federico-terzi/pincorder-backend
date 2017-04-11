@@ -9,5 +9,6 @@ router.register(r'recording_files', views.RecordingFileViewSet, base_name="recor
 router.register(r'pins', views.PinViewSet, base_name="pins")
 
 urlpatterns = [
-    url(r'^', include(router.urls))
+    url(r'^', include(router.urls)),
+    url(r'^user_dump/$', views.UserDump.as_view(), name='user-dump')
 ]

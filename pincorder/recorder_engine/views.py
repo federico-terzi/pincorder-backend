@@ -4,6 +4,7 @@ from rest_framework.decorators import list_route, detail_route
 from rest_framework.exceptions import PermissionDenied, APIException
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
 
 from .serializers import *
 
@@ -57,6 +58,17 @@ class RecordingViewSet(viewsets.ModelViewSet):
     
     ```
     GET: .../api/recordings/search_by_name/?name={YOUR_SEARCH_STRING}
+    ```
+    
+    ---
+    **Get Recording Pins**
+    
+    Return the list of the Recording's Pins
+    
+    *USAGE*
+    
+    ```
+    GET: .../api/recordings/{RECORDING_ID}/get_pins/
     ```
     
     """
@@ -118,7 +130,32 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         return Response({'status': recording.status})
 
+    @detail_route(methods=['get'])
+    def get_pins(self, request, pk=None):
+        """
+        Return the pins of the current recording
+        """
+
+        # Get the pins for the current recording and user
+        pins = Pin.objects.filter(recording__user_id=self.request.user)\
+                          .filter(recording_id=pk).order_by('time')
+
+        # Get the serializer
+        serializer = PinSerializer(data=pins, many=True, context={'request': request})
+        serializer.is_valid()
+
+        # Return the response
+        return Response(serializer.data)
+
     def perform_create(self, serializer):
+        # Get the posted recording
+        recording = serializer.get_recording()
+
+        # Check if the user is allowed to write in this course, if not, throw an exception
+        if self.request.user not in recording.course.authorized_users.all():
+            raise PermissionDenied("You're not allowed to write in this course!")
+
+        # If the user is authorized, save the recording
         serializer.save(user=self.request.user)
 
 
@@ -192,6 +229,17 @@ class RecordingFileViewSet(viewsets.ModelViewSet):
 
             return Response(serializer.data)
 
+    def perform_create(self, serializer):
+        # Get the posted recording
+        file = serializer.get_file()
+
+        # Check if the user is allowed to write in this recording, if not, throw an exception
+        if file.recording.user != self.request.user:
+            raise PermissionDenied("You're not allowed to write in this recording!")
+
+        # If the user is allowed, create the RecordingFile
+        return super().perform_create(serializer)
+
 
 class CourseViewSet(viewsets.ModelViewSet):
     serializer_class = CourseSerializer
@@ -208,6 +256,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         course = serializer.save()
         course.authorized_users.add(self.request.user)
 
+
 class PinViewSet(viewsets.ModelViewSet):
 
     serializer_class = PinSerializer
@@ -218,4 +267,22 @@ class PinViewSet(viewsets.ModelViewSet):
         """
 
         # Return the pin user is authorized to see
-        return Pin.objects.filter(recording__user_id = self.request.user)
+        return Pin.objects.filter(recording__user_id=self.request.user)
+
+    def perform_create(self, serializer):
+        # Get the current Posted Pin
+        pin = serializer.get_pin()
+
+        # If the user can't write in this recording, throw an error
+        if pin.recording.user != self.request.user:
+            raise PermissionDenied("You're not allowed to write in this recording!")
+
+        # If the user is allowed, create the object
+        return super().perform_create(serializer)
+
+
+class UserDump(APIView):
+
+    def get(self, request, format=None):
+
+        return Response('hi')
