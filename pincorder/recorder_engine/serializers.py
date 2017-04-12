@@ -72,7 +72,7 @@ class UserDumpCourseOnlyIdSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ('id')
+        fields = ('id',)
 
 
 class UserDumpPinSerializer(serializers.ModelSerializer):
@@ -84,8 +84,8 @@ class UserDumpPinSerializer(serializers.ModelSerializer):
 
 class UserDumpRecordingSerializer(serializers.ModelSerializer):
     # Uncomment if you want full information of the course in the recording
-    course = UserDumpCourseSerializer()
-    #course = UserDumpCourseOnlyIdSerializer()
+    # course = UserDumpCourseSerializer()
+    course = UserDumpCourseOnlyIdSerializer()
     pin_set = UserDumpPinSerializer(many=True)
 
     class Meta:
@@ -95,5 +95,5 @@ class UserDumpRecordingSerializer(serializers.ModelSerializer):
 
 class UserDumpSerializer(serializers.Serializer):
     user = UserDumpUserSerializer()
-    recordings = UserDumpRecordingSerializer(many=True)
     courses = UserDumpCourseSerializer(many=True)
+    recordings = UserDumpRecordingSerializer(many=True)
