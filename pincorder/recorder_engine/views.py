@@ -284,5 +284,15 @@ class PinViewSet(viewsets.ModelViewSet):
 class UserDump(APIView):
 
     def get(self, request, format=None):
+        recordings = Recording.objects.filter(user=request.user)
+        recording_serializer = UserDumpRecordingSerializer(recordings, many=True)
 
-        return Response('hi')
+        user_serializer = UserDumpUserSerializer(request.user)
+
+        courses = Course.objects.filter(authorized_users__in=[request.user])
+        courses_serializer = UserDumpCourseSerializer(courses, many=True)
+
+        serializer = UserDumpSerializer({'recordings': recording_serializer.data, 'user': user_serializer.data,
+                                         'courses': courses_serializer.data})
+
+        return Response(serializer.data)
