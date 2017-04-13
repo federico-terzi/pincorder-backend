@@ -40,7 +40,7 @@ class RecordingTest(APITestCase):
                                       date=timezone.now() - datetime.timedelta(hours=10),
                                       course=course2, user=self.currentUser)
 
-        self.firstRecording = r1
+        self.r1 = r1
 
         # Add pins to r1
         pin1 = Pin.objects.create(recording=r1, time=10, text="Explanation 1")
@@ -158,14 +158,14 @@ class RecordingTest(APITestCase):
 
     def test_add_pin_to_recording(self):
         client = self.get_logged_client()
-        response = client.post('/api/pins/', {'recording': self.firstRecording.id, 'time': 200, 'text': 'Test Pin'})
+        response = client.post('/api/pins/', {'recording': self.r1.id, 'time': 200, 'text': 'Test Pin'})
 
-        self.assertEqual(self.firstRecording.pin_set.count(), 4)
+        self.assertEqual(self.r1.pin_set.count(), 4)
 
         lastPin = Pin.objects.last()
 
         self.assertEqual(lastPin.text, 'Test Pin')
-        self.assertEqual(lastPin.recording, self.firstRecording)
+        self.assertEqual(lastPin.recording, self.r1)
         self.assertEqual(lastPin.time, 200)
 
     def test_add_pin_to_unauthorized_recording_should_fail(self):
@@ -203,3 +203,9 @@ class RecordingTest(APITestCase):
         response = client.delete('/api/pins/1/')
 
         self.assertEqual(initialCount, Pin.objects.count())
+
+    def test_add_pin_to_same_time_should_fail(self):
+        client = self.get_logged_client()
+        response = client.post('/api/pins/', {'recording': self.r1.id, 'time': 100, 'text': 'Test Pin'})
+
+        self.assertEqual(self.r1.pin_set.count(), 3)

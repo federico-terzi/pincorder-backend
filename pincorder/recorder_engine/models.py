@@ -54,3 +54,7 @@ class Pin(models.Model):
 
     def __str__(self):
         return "{recording} - {time}".format(recording=str(self.recording), time=self.time)
+
+    class Meta:
+        unique_together = (('recording', 'time'),)
+        ordering = ['time']

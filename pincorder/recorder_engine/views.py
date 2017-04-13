@@ -93,8 +93,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
                                       .filter(name__contains=request.query_params['name'])
 
         # Serialize the data
-        serializer = RecordingSerializer(data=recordings, many=True, context={'request': request})
-        serializer.is_valid()  # Needed to make the request work
+        serializer = RecordingSerializer(recordings, many=True, context={'request': request})
 
         return Response(serializer.data)
 
@@ -114,8 +113,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
             raise APIException('NO_RECORDING_FOUND')
         else:
             # Serialize the files
-            serializer = RecordingFileSerializer(data=files, many=True, context={'request': request})
-            serializer.is_valid()
+            serializer = RecordingFileSerializer(files, many=True, context={'request': request})
 
             return Response(serializer.data)
 
@@ -141,8 +139,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
                           .filter(recording_id=pk).order_by('time')
 
         # Get the serializer
-        serializer = PinSerializer(data=pins, many=True, context={'request': request})
-        serializer.is_valid()
+        serializer = PinSerializer(pins, many=True, context={'request': request})
 
         # Return the response
         return Response(serializer.data)
@@ -224,8 +221,7 @@ class RecordingFileViewSet(viewsets.ModelViewSet):
             raise APIException('NO_RECORDING_FOUND')
         else:
             # Serialize the files
-            serializer = RecordingFileSerializer(data=files, many=True, context={'request': request})
-            serializer.is_valid()
+            serializer = RecordingFileSerializer(files, many=True, context={'request': request})
 
             return Response(serializer.data)
 
@@ -242,6 +238,28 @@ class RecordingFileViewSet(viewsets.ModelViewSet):
 
 
 class CourseViewSet(viewsets.ModelViewSet):
+    """
+    This API is used to create and list courses.
+
+    ---
+    **Add a Course**
+
+    *USAGE*
+
+    ```
+    POST: .../api/courses/ 
+    ```
+    ---
+
+    **Get Course info**
+
+    *USAGE*
+
+    ```
+    GET: .../api/courses/{YOUR_COURSE_ID}/
+    ```
+
+    """
     serializer_class = CourseSerializer
 
     def get_queryset(self):
@@ -253,11 +271,25 @@ class CourseViewSet(viewsets.ModelViewSet):
         return Course.objects.filter(authorized_users__in=[self.request.user])
 
     def perform_create(self, serializer):
+        # Get the course and add the current user to the authorized group
         course = serializer.save()
         course.authorized_users.add(self.request.user)
 
 
 class PinViewSet(viewsets.ModelViewSet):
+    """
+    This API is used to add pins. To get pin information, check out the recordings API.
+
+    ---
+    **Add a Pin**
+
+    *USAGE*
+
+    ```
+    POST: .../api/pins/ 
+    ```
+
+    """
 
     serializer_class = PinSerializer
 
@@ -268,6 +300,10 @@ class PinViewSet(viewsets.ModelViewSet):
 
         # Return the pin user is authorized to see
         return Pin.objects.filter(recording__user_id=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        # Disable the list of pins, it doesn't have a meaning in this case
+        return Response("LIST_NOT_ALLOWED")
 
     def perform_create(self, serializer):
         # Get the current Posted Pin
@@ -282,16 +318,24 @@ class PinViewSet(viewsets.ModelViewSet):
 
 
 class UserDump(APIView):
-
+    """
+    This API is used to retrive all the profile, courses and recordings information for the current user
+    """
     def get(self, request, format=None):
+        # Get all the recordings for the current user
         recordings = Recording.objects.filter(user=request.user)
+        # Serialize the recordings
         recording_serializer = UserDumpRecordingSerializer(recordings, many=True)
 
+        # Serialize the user info
         user_serializer = UserDumpUserSerializer(request.user)
 
+        # Get all the courses that user is authorized to view
         courses = Course.objects.filter(authorized_users__in=[request.user])
+        # Serialize the courses information
         courses_serializer = UserDumpCourseSerializer(courses, many=True)
 
+        # Serialize all the UserDump
         serializer = UserDumpSerializer({'recordings': recording_serializer.data, 'user': user_serializer.data,
                                          'courses': courses_serializer.data})
 

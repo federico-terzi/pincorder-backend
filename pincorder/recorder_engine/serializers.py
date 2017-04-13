@@ -1,10 +1,15 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from rest_framework.fields import CurrentUserDefault
 from .models import *
 
 
 class RecordingFileSerializer(serializers.ModelSerializer):
-    recording = serializers.HyperlinkedRelatedField(view_name='recording-detail', read_only=True)
+    """
+    Serialized used for managing recording files
+    """
+    recording = serializers.PrimaryKeyRelatedField(
+                queryset=RecordingFile.objects.filter(recording__user_id=CurrentUserDefault()))
 
     def get_file(self):
         return RecordingFile(**self.validated_data)
