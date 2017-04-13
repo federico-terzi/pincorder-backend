@@ -42,8 +42,8 @@ class Recording(models.Model):
     # Name of the recording
     name = models.CharField(max_length=200)
 
-    # Date of the recording, the default value is the submit time
-    date = models.DateTimeField(default=now)
+    # Date of the recording
+    date = models.DateTimeField()
 
     # A string that rapresents the current status of the recording
     status = models.CharField(max_length=200, default="SUBMITTED")

@@ -64,7 +64,7 @@ class RecordingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recording
         fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'user')
-
+        read_only_fields = ('id', 'status', 'is_online', 'is_converted', 'user')
 
 """
 The UserDump* classes are used in the UserDumpAPI, where all the information
