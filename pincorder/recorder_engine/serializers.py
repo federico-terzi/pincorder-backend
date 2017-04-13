@@ -47,6 +47,7 @@ class PinSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pin
         fields = ('recording', 'time', 'text', 'media_url')
+        read_only_fields = ('media_url',)
 
 
 class RecordingSerializer(serializers.ModelSerializer):

@@ -209,3 +209,68 @@ class RecordingTest(APITestCase):
         response = client.post('/api/pins/', {'recording': self.r1.id, 'time': 100, 'text': 'Test Pin'})
 
         self.assertEqual(self.r1.pin_set.count(), 3)
+
+    def test_add_multiple_pins_to_recording(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/1/add_pin_batch/',
+                               {'batch': [{'time': 200, 'text': 'Test Pin'}, {'time': 250, 'text': 'Test Pin 2'}]})
+
+        self.assertEqual(self.r1.pin_set.count(), 5)
+
+        pin = Pin.objects.get(id=4)
+
+        self.assertEqual(pin.text, 'Test Pin')
+        self.assertEqual(pin.recording, self.r1)
+        self.assertEqual(pin.time, 200)
+
+        pin = Pin.objects.get(id=5)
+
+        self.assertEqual(pin.text, 'Test Pin 2')
+        self.assertEqual(pin.recording, self.r1)
+        self.assertEqual(pin.time, 250)
+
+    def test_add_multiple_pins_to_recording_with_update(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/1/add_pin_batch/',
+                               {'batch': [{'time': 10, 'text': 'Test Pin'}, {'time': 250, 'text': 'Test Pin 2'}]})
+
+        self.assertEqual(self.r1.pin_set.count(), 4)
+
+        pin = Pin.objects.get(id=1)
+
+        self.assertEqual(pin.text, 'Test Pin')
+        self.assertEqual(pin.recording, self.r1)
+        self.assertEqual(pin.time, 10)
+
+        pin = Pin.objects.get(id=4)
+
+        self.assertEqual(pin.text, 'Test Pin 2')
+        self.assertEqual(pin.recording, self.r1)
+        self.assertEqual(pin.time, 250)
+
+    def test_add_multiple_pins_should_fail_for_not_id(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings//add_pin_batch/',
+                               {'batch': [{'time': 200, 'text': 'Test Pin'}, {'time': 250, 'text': 'Test Pin 2'}]})
+        self.assertEqual(self.r1.pin_set.count(), 3)
+
+    def test_add_multiple_pins_should_fail_for_not_batch(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/1/add_pin_batch/',
+                               {})
+
+        self.assertEqual(self.r1.pin_set.count(), 3)
+
+    def test_add_multiple_pins_should_fail_for_unauthorized_recording(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/4/add_pin_batch/',
+                               {'batch': [{'time': 200, 'text': 'Test Pin'}, {'time': 250, 'text': 'Test Pin 2'}]})
+
+        self.assertEqual(self.r4.pin_set.count(), 0)
+
+    def test_add_multiple_pins_should_fail_for_not_existing_recording(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/400/add_pin_batch/',
+                               {'batch': [{'time': 200, 'text': 'Test Pin'}, {'time': 250, 'text': 'Test Pin 2'}]})
+
+        self.assertEqual(response.status_code, 404)

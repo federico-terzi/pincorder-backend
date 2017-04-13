@@ -1,7 +1,9 @@
 from django.contrib.auth.models import AnonymousUser
+from django.http import Http404
 from rest_framework import viewsets
-from rest_framework.decorators import list_route, detail_route
+from rest_framework.decorators import list_route, detail_route, parser_classes
 from rest_framework.exceptions import PermissionDenied, APIException
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
@@ -36,6 +38,17 @@ class RecordingViewSet(viewsets.ModelViewSet):
     
     ```
     POST: .../api/recordings/
+    ```
+    ---
+    **Add a Batch of Pins at once**
+    
+    Add a Batch of Pins at once. 
+    You must provide the "batch" post parameter, containing a list of pins.
+    
+    *USAGE*
+    
+    ```
+    POST: .../api/recordings/{YOUR_RECORDING_ID}/add_pin_batch/
     ```
     ---
     **Get the file of a the current Recording**
@@ -142,6 +155,119 @@ class RecordingViewSet(viewsets.ModelViewSet):
         serializer = PinSerializer(pins, many=True, context={'request': request})
 
         # Return the response
+        return Response(serializer.data)
+
+    @detail_route(methods=['post'])
+    @parser_classes((FormParser, MultiPartParser,))
+    def add_pin(self, request, pk=None):
+        """
+        Add or Update a Pin
+        """
+        # Get the pins of the current recording
+        pins = Recording.objects.get(pk=pk).pin_set
+
+        try:
+            # Try to get the pin
+            pin = pins.get(time=request.data['time'])
+
+            # If the text param exists, update it
+            if 'text' in request.data:
+                pin.text = request.data['text']
+            else:
+                pin.text = ""
+
+            # If the media_url param exists, update it
+            if 'media_url' in request.data:
+                # Delete the old image
+                pin.media_url.delete()
+                # Get the uploaded file
+                upload = request.data['media_url']
+                # Save the uploaded image
+                pin.media_url.save(upload.name, upload)
+
+            # Save the pin
+            pin.save()
+
+            # Return the response
+            return Response(PinSerializer(pin).data)
+        except Pin.DoesNotExist:
+            # Copy the request data
+            input_data = request.data.copy()
+
+            # Add the recording reference for the foreign key
+            input_data['recording'] = pk
+
+            # Get the serializer
+            serializer = PinSerializer(data=input_data)
+
+            # Check if the serialized data is valid
+            if serializer.is_valid():
+                # Save and get the pin
+                pin = serializer.save()
+
+                # If the media_url param exists, update it
+                if 'media_url' in request.data:
+                    # Delete the old image
+                    pin.media_url.delete()
+                    # Get the uploaded file
+                    upload = request.data['media_url']
+                    # Save the uploaded image
+                    pin.media_url.save(upload.name, upload)
+                    # Save the pin
+                    pin.save()
+
+                # Return the response
+                return Response(serializer.data)
+            else:
+                # If the serialized data is not valid, raise an error
+                raise APIException("ERROR: "+str(serializer.errors))
+
+    @detail_route(methods=['post'])
+    def add_pin_batch(self, request, pk=None):
+        """
+        Add Multiple Pins at once
+        """
+
+        # Check if the user is the author of the recording, if not throw and exception
+        if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
+            raise Http404("Error: You can't access this recording or it doesn't exists")
+
+        # Make sure that the user passes the 'batch' POST parameter, if not, raise an exception
+        if 'batch' not in self.request.data:
+            raise APIException("ERROR: You must specify the 'batch' parameter containing the data")
+
+        # Get the data from the batch POST parameter
+        data = self.request.data['batch']
+
+        # Get the pins of the current recording
+        pins = Recording.objects.get(pk=pk).pin_set.all()
+
+        # Initialize a list that will hold the pins
+        output_data = []
+
+        for d in data:
+            # For each pin in the batch, add the current recording
+            d['recording'] = pk
+
+            try:
+                # If it exists, update the text
+                pin = pins.get(time=d['time'])
+                if 'text' in d:
+                    pin.text = d['text']
+                else:
+                    pin.text = ""
+                pin.save()
+            except Pin.DoesNotExist:
+                # If the pin doesn't already exist in the database, append it to output_data
+                output_data.append(d)
+
+        # Create the serializer with the output_data
+        serializer = PinSerializer(data=output_data, many=True, context={'request': request})
+
+        # If it's valid, save the pins
+        if serializer.is_valid():
+            serializer.save()
+
         return Response(serializer.data)
 
     def perform_create(self, serializer):
