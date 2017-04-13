@@ -80,6 +80,8 @@ WSGI_APPLICATION = 'pincorder.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
+# Change the database engine based on the current enviroment.
+# If is in production, uses a Postgres database. If is in local, Sqlite is used
 if not IS_PRODUCTION:
     DATABASES = {
         'default': {
@@ -156,6 +158,7 @@ REST_FRAMEWORK = {
     'TEST_REQUEST_DEFAULT_FORMAT': 'json'
 }
 
+# OAuth Settings
 OAUTH2_PROVIDER = {
     # this is the list of available scopes
     'SCOPES': {'read': 'Read scope', 'write': 'Write scope', 'groups': 'Access to your groups'}
