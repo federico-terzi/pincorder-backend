@@ -1,4 +1,6 @@
 import datetime
+
+from django.core.files.base import ContentFile
 from django.test import TestCase
 from rest_framework.test import APITestCase, APIClient
 from django.utils import timezone
@@ -167,6 +169,32 @@ class RecordingTest(APITestCase):
         self.assertEqual(lastPin.text, 'Test Pin')
         self.assertEqual(lastPin.recording, self.r1)
         self.assertEqual(lastPin.time, 200)
+
+    def test_add_pin_to_recording_with_only_text(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/1/add_pin/', {'time': 200, 'text': 'Test Pin'})
+
+        self.assertEqual(self.r1.pin_set.count(), 4)
+
+        lastPin = Pin.objects.last()
+
+        self.assertEqual(lastPin.text, 'Test Pin')
+        self.assertEqual(lastPin.recording, self.r1)
+        self.assertEqual(lastPin.time, 200)
+
+    # def test_add_pin_to_recording_with_only_media(self):
+    #     client = self.get_logged_client()
+    #
+    #     response = client.post('/api/recordings/1/add_pin/', {'time': 200, 'text': 'Test Pin', 'media_url': open("file.mp3", "rb")})
+    #
+    #     print(response.content)
+    #     self.assertEqual(self.r1.pin_set.count(), 4)
+    #
+    #     lastPin = Pin.objects.last()
+    #
+    #     self.assertEqual(lastPin.text, 'Test Pin')
+    #     self.assertEqual(lastPin.recording, self.r1)
+    #     self.assertEqual(lastPin.time, 200)
 
     def test_add_pin_to_unauthorized_recording_should_fail(self):
         client = self.get_logged_client()
