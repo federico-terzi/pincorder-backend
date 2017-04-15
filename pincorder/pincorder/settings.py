@@ -29,7 +29,7 @@ if not IS_PRODUCTION:
 else:
     DEBUG = False
 
-ALLOWED_HOSTS = ['pincorder.freddytstudio.com']
+ALLOWED_HOSTS = ['pincorder.freddytstudio.com', 'localhost']
 
 
 # Application definition
@@ -61,7 +61,7 @@ ROOT_URLCONF = 'pincorder.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR,os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -80,6 +80,8 @@ WSGI_APPLICATION = 'pincorder.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
+# Change the database engine based on the current enviroment.
+# If is in production, uses a Postgres database. If is in local, Sqlite is used
 if not IS_PRODUCTION:
     DATABASES = {
         'default': {
@@ -152,9 +154,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'oauth2_provider.ext.rest_framework.OAuth2Authentication',
         'rest_framework.authentication.SessionAuthentication',
-    )
+    ),
+    'TEST_REQUEST_DEFAULT_FORMAT': 'json'
 }
 
+# OAuth Settings
 OAUTH2_PROVIDER = {
     # this is the list of available scopes
     'SCOPES': {'read': 'Read scope', 'write': 'Write scope', 'groups': 'Access to your groups'}
