@@ -230,7 +230,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # Check if the user is the author of the recording, if not throw and exception
         if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
-            raise Http404("Error: You can't access this recording or it doesn't exists")
+            raise Http404("ERROR: You can't access this recording or it doesn't exists")
 
         # Make sure that the user passes the 'batch' POST parameter, if not, raise an exception
         if 'batch' not in self.request.data:
