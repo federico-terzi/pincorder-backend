@@ -36,6 +36,7 @@ ALLOWED_HOSTS = ['pincorder.freddytstudio.com', 'localhost']
 
 INSTALLED_APPS = [
     'recorder_engine',
+    'pincorder_desktop',
     'rest_framework',
     'oauth2_provider',
     'social_django',
