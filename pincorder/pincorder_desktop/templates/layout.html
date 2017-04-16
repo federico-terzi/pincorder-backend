@@ -1,0 +1,65 @@
+{% extends 'pincorder_desktop/templates/base.html' %}
+
+{% block body %}
+    <div class="navbar navbar-inverse">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse"
+                        data-target=".navbar-responsive-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand withripple" href="javascript:void(0)">Pincorder</a>
+            </div>
+            <div class="navbar-collapse collapse navbar-responsive-collapse">
+                <ul class="nav navbar-nav">
+                    <li class="active"><a href="javascript:void(0)">Home</a></li>
+                    <li class="dropdown">
+                        <a href="bootstrap-elements.html" data-target="#" class="dropdown-toggle"
+                           data-toggle="dropdown">Recordings
+                            <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="javascript:void(0)">My Recordings</a></li>
+                            <li><a href="javascript:void(0)">Add a Recording</a></li>
+                            <li><a href="javascript:void(0)">Shared with Me</a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown">
+                        <a href="bootstrap-elements.html" data-target="#" class="dropdown-toggle"
+                           data-toggle="dropdown">Courses
+                            <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="javascript:void(0)">My Courses</a></li>
+                            <li><a href="javascript:void(0)">Teachers</a></li>
+                            <li><a href="javascript:void(0)">Shared with Me</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <ul class="nav navbar-nav navbar-right">
+                    <form class="navbar-form navbar-left">
+                        <div class="form-group">
+                            <input type="text" class="form-control col-md-8" placeholder="Search a Recording...">
+                        </div>
+                    </form>
+                    {% if user.is_authenticated %}
+                        <p class="navbar-text">Logged as <strong>{{ user.username }}</strong></p>
+                        <li><a href="javascript:void(0)"><i class="material-icons">exit_to_app</i> Logout</a></li>
+                    {% else %}
+                        <li><a href="javascript:void(0)"><i class="material-icons">exit_to_app</i> Login</a></li>
+                        <li><a href="javascript:void(0)"><i class="material-icons">account_box</i> Sign Up</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <h2>{% block contentTitle %}{% endblock %}</h2>
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+
+    </div>
+{% endblock %}

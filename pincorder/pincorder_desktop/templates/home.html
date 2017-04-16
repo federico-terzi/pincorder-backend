@@ -1,8 +1,5 @@
-{% extends 'pincorder_desktop/templates/base.html' %}
+{% extends 'pincorder_desktop/templates/layout.html' %}
 
-{% block title %}{% endblock %}
+{% block title %}Home{% endblock %}
 
-{% block body %}
-<p>Hello |{{ user.email }}|!</p>
-<a href="{% url 'social:begin' 'facebook' %}">Login with Facebook</a>
-{% endblock %}
+{% block contentTitle %}Home{% endblock %}

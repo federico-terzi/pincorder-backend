@@ -10,12 +10,22 @@
 
     <!-- Bootstrap -->
     <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-
     <!-- Bootstrap Material Design -->
-    <link rel="stylesheet" type="text/css" href="{% static "/dist/css/bootstrap-material-design.css"%}">
+    <link rel="stylesheet" type="text/css" href="{% static "/dist/css/bootstrap-material-design.css" %}">
     <link rel="stylesheet" type="text/css" href="{% static "/dist/css/ripples.min.css" %}">
+
+
 </head>
 <body>
 {% block body %}{% endblock %}
+<script src="//code.jquery.com/jquery-1.10.2.min.js"></script>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+<script src="{% static "/dist/js/ripples.min.js" %}"></script>
+<script src="{% static "/dist/js/material.min.js" %}"></script>
+<script>
+    $(function () {
+        $.material.init();
+    });
+</script>
 </body>
 </html>
