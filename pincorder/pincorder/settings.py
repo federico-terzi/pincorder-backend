@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'recorder_engine',
     'rest_framework',
     'oauth2_provider',
+    'social_django',
+    'rest_framework_social_oauth2',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -69,6 +71,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -154,8 +158,27 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'oauth2_provider.ext.rest_framework.OAuth2Authentication',
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_social_oauth2.authentication.SocialAuthentication',
     ),
     'TEST_REQUEST_DEFAULT_FORMAT': 'json'
+}
+
+AUTHENTICATION_BACKENDS = (
+    'rest_framework_social_oauth2.backends.DjangoOAuth2',
+    'social_core.backends.facebook.FacebookAppOAuth2',
+    'social_core.backends.facebook.FacebookOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+LOGIN_URL = 'login'
+LOGOUT_URL = 'logout'
+LOGIN_REDIRECT_URL = 'home'
+
+SOCIAL_AUTH_FACEBOOK_KEY = '1784431718541663'  # App ID
+SOCIAL_AUTH_FACEBOOK_SECRET = 'dfc4090fb2c1fe8cc84f9fd906758390'  # App Secret
+SOCIAL_AUTH_FACEBOOK_SCOPE = ['email']
+SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {
+    'fields': 'id, name, email'
 }
 
 # OAuth Settings
