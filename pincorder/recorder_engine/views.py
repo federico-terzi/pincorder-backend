@@ -159,10 +159,51 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
     @detail_route(methods=['post'])
     @parser_classes((FormParser, MultiPartParser,))
+    def upload_file(self, request, pk=None):
+        """
+        Upload the recording file
+        """
+        # Check if the user is the author of the recording, if not throw and exception
+        if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
+            raise Http404("ERROR: You can't access this recording or it doesn't exists")
+
+        # Check if the file already exists
+        if RecordingFile.objects.filter(recording_id=pk).exists():
+            raise APIException("ERROR: The File already exists")
+
+        # Copy the request data
+        input_data = request.data.copy()
+
+        # Add the recording reference for the foreign key
+        input_data['recording'] = pk
+
+        # Get the serializer
+        serializer = RecordingFileSerializer(data=input_data)
+
+        # Check if the serialized data is valid
+        if serializer.is_valid():
+            # Check that the file is an AAC audio file
+            if not request.data['file_url'].name.endswith(".aac"):
+                raise APIException("ERROR: Wrong file format!")
+
+            # Save and get the RecordingFile
+            file = serializer.save()
+
+            # Return the response
+            return Response(serializer.data)
+        else:
+            raise APIException("ERROR: " + serializer.errors)
+
+    @detail_route(methods=['post'])
+    @parser_classes((FormParser, MultiPartParser,))
     def add_pin(self, request, pk=None):
         """
         Add or Update a Pin
         """
+        # Check if the user is the author of the recording, if not throw and exception
+        if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
+            raise Http404("ERROR: You can't access this recording or it doesn't exists")
+
         # Get the pins of the current recording
         pins = Recording.objects.get(pk=pk).pin_set
 
