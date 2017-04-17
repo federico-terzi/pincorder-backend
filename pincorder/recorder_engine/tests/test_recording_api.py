@@ -1,4 +1,5 @@
 import datetime
+import os
 
 from django.core.files.base import ContentFile
 from django.test import TestCase
@@ -160,7 +161,7 @@ class RecordingTest(APITestCase):
 
     def test_add_pin_to_recording(self):
         client = self.get_logged_client()
-        response = client.post('/api/pins/', {'recording': self.r1.id, 'time': 200, 'text': 'Test Pin'})
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id), {'time': 200, 'text': 'Test Pin'})
 
         self.assertEqual(self.r1.pin_set.count(), 4)
 
@@ -172,7 +173,7 @@ class RecordingTest(APITestCase):
 
     def test_add_pin_to_recording_with_only_text(self):
         client = self.get_logged_client()
-        response = client.post('/api/recordings/1/add_pin/', {'time': 200, 'text': 'Test Pin'})
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id), {'time': 200, 'text': 'Test Pin'})
 
         self.assertEqual(self.r1.pin_set.count(), 4)
 
@@ -198,13 +199,13 @@ class RecordingTest(APITestCase):
 
     def test_add_pin_to_unauthorized_recording_should_fail(self):
         client = self.get_logged_client()
-        response = client.post('/api/pins/', {'recording': self.r4.id, 'time': 200, 'text': 'Test Pin'})
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r4.id), {'time': 200, 'text': 'Test Pin'})
 
         self.assertEqual(self.r4.pin_set.count(), 0)
 
     def test_edit_pin(self):
         client = self.get_logged_client()
-        response = client.patch('/api/pins/1/', {'text': 'New Name'})
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id), {'time': 10, 'text': 'New Name'})
 
         pin = Pin.objects.first()
 
@@ -212,7 +213,7 @@ class RecordingTest(APITestCase):
 
     def test_edit_unauthorized_pin_should_fail(self):
         client = self.get_logged_client(self.currentUser2)
-        response = client.patch('/api/pins/1/', {'text': 'New Name'})
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id), {'time': 10, 'text': 'New Name'})
 
         pin = Pin.objects.first()
 
@@ -221,20 +222,27 @@ class RecordingTest(APITestCase):
     def test_delete_pin(self):
         client = self.get_logged_client()
         initialCount = Pin.objects.count()
-        response = client.delete('/api/pins/1/')
+        response = client.delete('/api/recordings/{id}/delete_pin/'.format(id=self.r1.id), {'time': 10})
 
         self.assertEqual(initialCount, Pin.objects.count()+1)
+
+    def test_delete_pin_at_non_existing_time_should_fail(self):
+        client = self.get_logged_client()
+        initialCount = Pin.objects.count()
+        response = client.delete('/api/recordings/{id}/delete_pin/'.format(id=self.r1.id), {'time': 1023})
+
+        self.assertEqual(initialCount, Pin.objects.count())
 
     def test_delete_unauthorized_pin_should_fail(self):
         client = self.get_logged_client(self.currentUser2)
         initialCount = Pin.objects.count()
-        response = client.delete('/api/pins/1/')
+        response = client.delete('/api/recordings/{id}/delete_pin/'.format(id=self.r1.id), {'time': 10})
 
         self.assertEqual(initialCount, Pin.objects.count())
 
     def test_add_pin_to_same_time_should_fail(self):
         client = self.get_logged_client()
-        response = client.post('/api/pins/', {'recording': self.r1.id, 'time': 100, 'text': 'Test Pin'})
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id), {'time': 100, 'text': 'Test Pin'})
 
         self.assertEqual(self.r1.pin_set.count(), 3)
 
@@ -302,3 +310,55 @@ class RecordingTest(APITestCase):
                                {'batch': [{'time': 200, 'text': 'Test Pin'}, {'time': 250, 'text': 'Test Pin 2'}]})
 
         self.assertEqual(response.status_code, 404)
+
+    def test_upload_file(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/1/upload_file/',
+                               {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                                format='multipart')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.r1.recordingfile.file_url, response.data['file_url'])
+        self.assertTrue(os.path.isfile(os.path.join(settings.MEDIA_ROOT, response.data['file_url'])))
+
+        # Deleting file
+        os.remove(os.path.join(settings.MEDIA_ROOT, response.data['file_url']))
+
+    def test_upload_file_already_exist_should_fail(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/1/upload_file/',
+                               {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                                format='multipart')
+        # Deleting file
+        os.remove(os.path.join(settings.MEDIA_ROOT, response.data['file_url']))
+
+        # Send the request again
+        response = client.post('/api/recordings/1/upload_file/',
+                               {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                               format='multipart')
+
+        self.assertEqual(response.status_code, 500)
+
+    def test_upload_file_wrong_format_should_fail(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/1/upload_file/',
+                               {'file_url': open('recorder_engine/tests/wrong.png', 'rb')},
+                                format='multipart')
+
+        self.assertEqual(response.status_code, 500)
+
+    def test_upload_file_to_nonexisting_recording_should_fail(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/1234/upload_file/',
+                               {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                                format='multipart')
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_upload_file_without_params_should_fail(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/1/upload_file/',
+                               {'file_url': ''},
+                                format='multipart')
+
+        self.assertEqual(response.status_code, 500)

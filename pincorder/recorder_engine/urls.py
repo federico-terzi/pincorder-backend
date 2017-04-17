@@ -7,8 +7,6 @@ from . import views
 router = DefaultRouter()
 router.register(r'recordings', views.RecordingViewSet, base_name="recording")
 router.register(r'courses', views.CourseViewSet, base_name="course")
-router.register(r'recording_files', views.RecordingFileViewSet, base_name="recording_files")
-router.register(r'pins', views.PinViewSet, base_name="pins")
 
 # Define the url patterns for the API
 urlpatterns = [

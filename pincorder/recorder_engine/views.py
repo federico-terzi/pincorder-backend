@@ -141,27 +141,11 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         return Response({'status': recording.status})
 
-    @detail_route(methods=['get'])
-    def get_pins(self, request, pk=None):
-        """
-        Return the pins of the current recording
-        """
-
-        # Get the pins for the current recording and user
-        pins = Pin.objects.filter(recording__user_id=self.request.user)\
-                          .filter(recording_id=pk).order_by('time')
-
-        # Get the serializer
-        serializer = PinSerializer(pins, many=True, context={'request': request})
-
-        # Return the response
-        return Response(serializer.data)
-
     @detail_route(methods=['post'])
     @parser_classes((FormParser, MultiPartParser,))
     def upload_file(self, request, pk=None):
         """
-        Upload the recording file
+        Upload the audio file to a recording
         """
         # Check if the user is the author of the recording, if not throw and exception
         if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
@@ -182,8 +166,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # Check if the serialized data is valid
         if serializer.is_valid():
-            # Check that the file is an AAC audio file
-            if not request.data['file_url'].name.endswith(".aac"):
+            # Check that the file is an AAC audio file or MP3 audio file
+            if not request.data['file_url'].name.endswith(".aac") and not request.data['file_url'].name.endswith(".mp3"):
                 raise APIException("ERROR: Wrong file format!")
 
             # Save and get the RecordingFile
@@ -192,7 +176,23 @@ class RecordingViewSet(viewsets.ModelViewSet):
             # Return the response
             return Response(serializer.data)
         else:
-            raise APIException("ERROR: " + serializer.errors)
+            raise APIException("ERROR: " + str(serializer.errors))
+
+    @detail_route(methods=['get'])
+    def get_pins(self, request, pk=None):
+        """
+        Return the pins of the current recording
+        """
+
+        # Get the pins for the current recording and user
+        pins = Pin.objects.filter(recording__user_id=self.request.user) \
+            .filter(recording_id=pk).order_by('time')
+
+        # Get the serializer
+        serializer = PinSerializer(pins, many=True, context={'request': request})
+
+        # Return the response
+        return Response(serializer.data)
 
     @detail_route(methods=['post'])
     @parser_classes((FormParser, MultiPartParser,))
@@ -263,6 +263,29 @@ class RecordingViewSet(viewsets.ModelViewSet):
                 # If the serialized data is not valid, raise an error
                 raise APIException("ERROR: "+str(serializer.errors))
 
+    @detail_route(methods=['delete'])
+    def delete_pin(self, request, pk=None):
+        """
+        Delete a Pin
+        """
+        # Check if the user is the author of the recording, if not throw and exception
+        if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
+            raise Http404("ERROR: You can't access this recording or it doesn't exists")
+
+        # Check if the pin exists in the specified time
+        try:
+            # Get the pin at the specified time
+            pin = Recording.objects.get(id=pk).pin_set.get(time=request.data['time'])
+
+            # Delete the pin
+            pin.delete()
+
+            # Return the response
+            return Response("OK")
+        except Pin.DoesNotExist:
+            # If no pin is found, raise an Exception
+            raise Http404('ERROR: No Pin at that time!')
+
     @detail_route(methods=['post'])
     def add_pin_batch(self, request, pk=None):
         """
@@ -323,87 +346,6 @@ class RecordingViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
-class RecordingFileViewSet(viewsets.ModelViewSet):
-    """
-    This API is used to get and upload Recording Audios.
-    
-    ---
-    **Get a List of Files for the current user**
-    
-    *USAGE*
-    
-    ```
-    GET: .../api/recording_files/ 
-    ```
-    ---
-    
-    **Upload a Recording**
-    
-    Upload a recording
-    
-    *USAGE*
-    
-    ```
-    POST: .../api/recording_files/
-    ```
-    ---
-    **Get the File from the Recording ID**
-    
-    Note: return a list of files
-    
-    *USAGE*
-    
-    ```
-    GET: .../api/recording_files/get_file_by_recording_id/?id={YOUR_RECORDING_ID}
-    ```
-    
-    """
-    serializer_class = RecordingFileSerializer
-
-    def get_queryset(self):
-        """
-        Set the queryset for the current user 
-        """
-
-        # Return the Files for the current user
-        return RecordingFile.objects.filter(recording__user=self.request.user)
-
-    @list_route(methods=['get'])
-    def get_file_by_recording_id(self, request):
-        """
-        Return the file url for the specified Recording ID
-        """
-
-        # Make sure that the user passes the 'id' parameter, if not, raise an exception
-        if 'id' not in self.request.query_params:
-            raise APIException("ERROR: You must specify the 'id' parameter")
-
-        # Fetch the files for the current user and Recording id
-        files = RecordingFile.objects.filter(recording__user_id=self.request.user)\
-                                     .filter(recording__id=self.request.query_params['id'])
-
-        # Check if recording has files
-        if files.count() == 0:
-            # If not, raise an exception
-            raise APIException('NO_RECORDING_FOUND')
-        else:
-            # Serialize the files
-            serializer = RecordingFileSerializer(files, many=True, context={'request': request})
-
-            return Response(serializer.data)
-
-    def perform_create(self, serializer):
-        # Get the posted recording
-        file = serializer.get_file()
-
-        # Check if the user is allowed to write in this recording, if not, throw an exception
-        if file.recording.user != self.request.user:
-            raise PermissionDenied("You're not allowed to write in this recording!")
-
-        # If the user is allowed, create the RecordingFile
-        return super().perform_create(serializer)
-
-
 class CourseViewSet(viewsets.ModelViewSet):
     """
     This API is used to create and list courses.
@@ -441,47 +383,6 @@ class CourseViewSet(viewsets.ModelViewSet):
         # Get the course and add the current user to the authorized group
         course = serializer.save()
         course.authorized_users.add(self.request.user)
-
-
-class PinViewSet(viewsets.ModelViewSet):
-    """
-    This API is used to add pins. To get pin information, check out the recordings API.
-
-    ---
-    **Add a Pin**
-
-    *USAGE*
-
-    ```
-    POST: .../api/pins/ 
-    ```
-
-    """
-
-    serializer_class = PinSerializer
-
-    def get_queryset(self):
-        """
-        Set the queryset for the current user 
-        """
-
-        # Return the pin user is authorized to see
-        return Pin.objects.filter(recording__user_id=self.request.user)
-
-    def list(self, request, *args, **kwargs):
-        # Disable the list of pins, it doesn't have a meaning in this case
-        return Response("LIST_NOT_ALLOWED")
-
-    def perform_create(self, serializer):
-        # Get the current Posted Pin
-        pin = serializer.get_pin()
-
-        # If the user can't write in this recording, throw an error
-        if pin.recording.user != self.request.user:
-            raise PermissionDenied("You're not allowed to write in this recording!")
-
-        # If the user is allowed, create the object
-        return super().perform_create(serializer)
 
 
 class UserDump(APIView):
