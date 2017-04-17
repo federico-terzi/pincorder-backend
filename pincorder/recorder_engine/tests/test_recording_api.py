@@ -142,6 +142,18 @@ class RecordingTest(APITestCase):
 
         self.assertEqual(initialCount, Recording.objects.count()+1)
 
+    def test_delete_recording_check_if_file_is_deleted(self):
+        client = self.get_logged_client()
+        initialCount = Recording.objects.count()
+        response = client.post('/api/recordings/1/upload_file/',
+                               {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                               format='multipart')
+        filename = response.data['file_url']
+        response = client.delete('/api/recordings/1/')
+
+        self.assertFalse(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
+        self.assertEqual(initialCount, Recording.objects.count()+1)
+
     def test_delete_unauthorized_recording_should_fail(self):
         client = self.get_logged_client(self.currentUser2)
         initialCount = Recording.objects.count()
@@ -161,15 +173,22 @@ class RecordingTest(APITestCase):
 
     def test_add_pin_to_recording(self):
         client = self.get_logged_client()
-        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id), {'time': 200, 'text': 'Test Pin'})
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id),
+                               {'time': 200, 'text': 'Test Pin',
+                                'media_url': open('recorder_engine/tests/wrong.png', 'rb')},
+                                format = 'multipart')
 
         self.assertEqual(self.r1.pin_set.count(), 4)
 
         lastPin = Pin.objects.last()
 
         self.assertEqual(lastPin.text, 'Test Pin')
+        self.assertTrue(lastPin.media_url is not None)
         self.assertEqual(lastPin.recording, self.r1)
         self.assertEqual(lastPin.time, 200)
+
+        # Deleting file
+        os.remove(os.path.join(settings.MEDIA_ROOT, response.data['media_url']))
 
     def test_add_pin_to_recording_with_only_text(self):
         client = self.get_logged_client()
@@ -183,19 +202,22 @@ class RecordingTest(APITestCase):
         self.assertEqual(lastPin.recording, self.r1)
         self.assertEqual(lastPin.time, 200)
 
-    # def test_add_pin_to_recording_with_only_media(self):
-    #     client = self.get_logged_client()
-    #
-    #     response = client.post('/api/recordings/1/add_pin/', {'time': 200, 'text': 'Test Pin', 'media_url': open("file.mp3", "rb")})
-    #
-    #     print(response.content)
-    #     self.assertEqual(self.r1.pin_set.count(), 4)
-    #
-    #     lastPin = Pin.objects.last()
-    #
-    #     self.assertEqual(lastPin.text, 'Test Pin')
-    #     self.assertEqual(lastPin.recording, self.r1)
-    #     self.assertEqual(lastPin.time, 200)
+    def test_add_pin_to_recording_with_only_media(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id),
+                               {'time': 200, 'media_url': open('recorder_engine/tests/wrong.png', 'rb')},
+                               format='multipart')
+
+        self.assertEqual(self.r1.pin_set.count(), 4)
+
+        lastPin = Pin.objects.last()
+
+        self.assertTrue(lastPin.media_url is not None)
+        self.assertEqual(lastPin.recording, self.r1)
+        self.assertEqual(lastPin.time, 200)
+
+        # Deleting file
+        os.remove(os.path.join(settings.MEDIA_ROOT, response.data['media_url']))
 
     def test_add_pin_to_unauthorized_recording_should_fail(self):
         client = self.get_logged_client()
@@ -224,6 +246,20 @@ class RecordingTest(APITestCase):
         initialCount = Pin.objects.count()
         response = client.delete('/api/recordings/{id}/delete_pin/'.format(id=self.r1.id), {'time': 10})
 
+        self.assertEqual(initialCount, Pin.objects.count()+1)
+
+    def test_delete_pin_check_if_image_is_deleted(self):
+        client = self.get_logged_client()
+
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id),
+                               {'time': 200, 'media_url': open('recorder_engine/tests/wrong.png', 'rb')},
+                               format='multipart')
+
+        filename = response.data['media_url']
+        initialCount = Pin.objects.count()
+        response = client.delete('/api/recordings/{id}/delete_pin/'.format(id=self.r1.id), {'time': 200})
+
+        self.assertFalse(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
         self.assertEqual(initialCount, Pin.objects.count()+1)
 
     def test_delete_pin_at_non_existing_time_should_fail(self):
