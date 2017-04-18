@@ -1,7 +1,7 @@
 {% extends 'pincorder_desktop/templates/base.html' %}
 
 {% block body %}
-    <div class="navbar navbar-inverse">
+    <div class="navbar navbar-default">
         <div class="container-fluid">
             <div class="navbar-header">
                 <button type="button" class="navbar-toggle" data-toggle="collapse"
@@ -44,22 +44,18 @@
                     </form>
                     {% if user.is_authenticated %}
                         <p class="navbar-text">Logged as <strong>{{ user.username }}</strong></p>
-                        <li><a href="javascript:void(0)"><i class="material-icons">exit_to_app</i> Logout</a></li>
+                        <li><a href="javascript:void(0)"><span class="glyphicon glyphicon-log-out"></span> Logout</a></li>
                     {% else %}
-                        <li><a href="javascript:void(0)"><i class="material-icons">exit_to_app</i> Login</a></li>
-                        <li><a href="javascript:void(0)"><i class="material-icons">account_box</i> Sign Up</a></li>
+                        <li><a href="javascript:void(0)"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+                        <li><a href="javascript:void(0)"><span class="glyphicon glyphicon-user"></span> Sign Up</a></li>
                     {% endif %}
                 </ul>
             </div>
         </div>
     </div>
     <div class="container">
-        <div class="panel panel-default">
-            <div class="panel-body">
-                <h2>{% block contentTitle %}{% endblock %}</h2>
-                {% block content %}{% endblock %}
-            </div>
-        </div>
+        <h2>{% block contentTitle %}{% endblock %}</h2>
+        {% block content %}{% endblock %}
 
     </div>
 {% endblock %}
