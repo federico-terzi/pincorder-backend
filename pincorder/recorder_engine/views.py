@@ -15,74 +15,9 @@ from oauth2_provider.ext.rest_framework import TokenHasReadWriteScope, TokenHasS
 
 class RecordingViewSet(viewsets.ModelViewSet):
     """
-    This API is used to add, list and get information about recordings.
+    Using this API you will be able to create, edit and manage Recordings and Pins.
     
-    ---
-    
-    **Get a Recording by ID**
-    
-    Return the Recording with the specified ID
-    
-    *USAGE*
-    
-    ```
-    GET: .../api/recordings/{RECORDING_ID}/ 
-    ```
-    ---
-    
-    **Create a Recording**
-    
-    Create a Recording with the specified POST parameters
-    
-    *USAGE*
-    
-    ```
-    POST: .../api/recordings/
-    ```
-    ---
-    **Add a Batch of Pins at once**
-    
-    Add a Batch of Pins at once. 
-    You must provide the "batch" post parameter, containing a list of pins.
-    
-    *USAGE*
-    
-    ```
-    POST: .../api/recordings/{YOUR_RECORDING_ID}/add_pin_batch/
-    ```
-    ---
-    **Get the file of a the current Recording**
-    
-    Return the file of the specified Recording, if it doesn't exist, it returns "NO_RECORDING_FOUND"
-    
-    **Note**: return a list of files
-    
-    *USAGE*
-    
-    ```
-    GET: .../api/recordings/{YOUR_RECORDING_ID}/get_file/
-    ```
-    ---
-    **Search a Recording by Name**
-    
-    Return the Recording with a name containing the specified string
-    
-    *USAGE*
-    
-    ```
-    GET: .../api/recordings/search_by_name/?name={YOUR_SEARCH_STRING}
-    ```
-    
-    ---
-    **Get Recording Pins**
-    
-    Return the list of the Recording's Pins
-    
-    *USAGE*
-    
-    ```
-    GET: .../api/recordings/{RECORDING_ID}/get_pins/
-    ```
+    [Check out the full documentation on GitHub](https://github.com/federico-terzi/pincorder-backend/wiki/Recording-API)
     
     """
     serializer_class = RecordingSerializer
@@ -126,7 +61,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
             raise APIException('NO_RECORDING_FOUND')
         else:
             # Serialize the files
-            serializer = RecordingFileSerializer(files, many=True, context={'request': request})
+            serializer = RecordingFileSerializer(files.first(), context={'request': request})
 
             return Response(serializer.data)
 
@@ -348,25 +283,9 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
 class CourseViewSet(viewsets.ModelViewSet):
     """
-    This API is used to create and list courses.
-
-    ---
-    **Add a Course**
-
-    *USAGE*
-
-    ```
-    POST: .../api/courses/ 
-    ```
-    ---
-
-    **Get Course info**
-
-    *USAGE*
-
-    ```
-    GET: .../api/courses/{YOUR_COURSE_ID}/
-    ```
+    Using this API you will be able to create, edit and manage Courses and Teachers.
+    
+    [Check out the full documentation on GitHub](https://github.com/federico-terzi/pincorder-backend/wiki/Course-API)
 
     """
     serializer_class = CourseSerializer
