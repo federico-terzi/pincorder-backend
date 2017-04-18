@@ -167,7 +167,7 @@ class RecordingTest(APITestCase):
 
         self.assertDictContainsSubset({'time': 10, 'text': 'Explanation 1', 'media_url': None}, response.data[0])
         self.assertDictContainsSubset({'time': 50, 'text': '',
-                                       'media_url': 'http://testserver/api/recordings/1/get_pins/url_to_img.jpg'},
+                                       'media_url': 'http://testserver/media/url_to_img.jpg'},
                                       response.data[1])
         self.assertDictContainsSubset({'time': 100, 'text': 'Explanation 2', 'media_url': None}, response.data[2])
 
@@ -187,8 +187,10 @@ class RecordingTest(APITestCase):
         self.assertEqual(lastPin.recording, self.r1)
         self.assertEqual(lastPin.time, 200)
 
+        filename = '/'.join(response.data['media_url'].split('/')[-2:])
+
         # Deleting file
-        os.remove(os.path.join(settings.MEDIA_ROOT, response.data['media_url']))
+        os.remove(os.path.join(settings.MEDIA_ROOT, filename))
 
     def test_add_pin_to_recording_with_only_text(self):
         client = self.get_logged_client()
@@ -216,8 +218,10 @@ class RecordingTest(APITestCase):
         self.assertEqual(lastPin.recording, self.r1)
         self.assertEqual(lastPin.time, 200)
 
+        filename = '/'.join(response.data['media_url'].split('/')[-2:])
+
         # Deleting file
-        os.remove(os.path.join(settings.MEDIA_ROOT, response.data['media_url']))
+        os.remove(os.path.join(settings.MEDIA_ROOT, filename))
 
     def test_add_pin_to_unauthorized_recording_should_fail(self):
         client = self.get_logged_client()
@@ -354,19 +358,24 @@ class RecordingTest(APITestCase):
                                 format='multipart')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.r1.recordingfile.file_url, response.data['file_url'])
-        self.assertTrue(os.path.isfile(os.path.join(settings.MEDIA_ROOT, response.data['file_url'])))
+        self.assertEqual(self.r1.recordingfile.file_url.url, response.data['file_url'])
+
+        filename = '/'.join(response.data['file_url'].split('/')[-2:])
+        self.assertTrue(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
 
         # Deleting file
-        os.remove(os.path.join(settings.MEDIA_ROOT, response.data['file_url']))
+        os.remove(os.path.join(settings.MEDIA_ROOT, filename))
 
     def test_upload_file_already_exist_should_fail(self):
         client = self.get_logged_client()
         response = client.post('/api/recordings/1/upload_file/',
                                {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
                                 format='multipart')
+
+        filename = '/'.join(response.data['file_url'].split('/')[-2:])
+
         # Deleting file
-        os.remove(os.path.join(settings.MEDIA_ROOT, response.data['file_url']))
+        os.remove(os.path.join(settings.MEDIA_ROOT, filename))
 
         # Send the request again
         response = client.post('/api/recordings/1/upload_file/',

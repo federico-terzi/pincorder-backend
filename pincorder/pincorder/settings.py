@@ -29,7 +29,9 @@ if not IS_PRODUCTION:
 else:
     DEBUG = False
 
-ALLOWED_HOSTS = ['pincorder.freddytstudio.com', 'localhost']
+PINCORDER_DOMAIN = 'pincorder.freddytstudio.com'
+
+ALLOWED_HOSTS = [PINCORDER_DOMAIN, 'localhost']
 
 
 # Application definition
@@ -146,6 +148,9 @@ STATIC_URL = '/static/'
 
 # Directory where media files are stored
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+# Url where the media are served
+MEDIA_URL = '/media/'
 
 # Directory where raw recordings are stored
 UPLOAD_MEDIA_URL =  "raw_upload/"
