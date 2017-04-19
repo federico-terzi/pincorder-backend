@@ -145,7 +145,7 @@ class RecordingTest(APITestCase):
     def test_delete_recording_check_if_file_is_deleted(self):
         client = self.get_logged_client()
         initialCount = Recording.objects.count()
-        response = client.post('/api/recordings/1/upload_file/',
+        response = client.post('/api/recordings/'+self.r1.id+'/upload_file/',
                                {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
                                format='multipart')
         print(response.content)
