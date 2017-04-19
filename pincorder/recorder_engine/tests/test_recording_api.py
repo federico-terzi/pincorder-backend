@@ -148,6 +148,7 @@ class RecordingTest(APITestCase):
         response = client.post('/api/recordings/1/upload_file/',
                                {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
                                format='multipart')
+        print(response.content)
         filename = response.data['file_url']
         response = client.delete('/api/recordings/1/')
 
