@@ -46,6 +46,7 @@ class UserDumpTest(APITestCase):
                                       course=course2, user=self.currentUser)
 
         self.r1 = r1
+        self.r3 = r3
 
         # Add pins to r1
         pin1 = Pin.objects.create(recording=r1, time=10, text="Explanation 1")
@@ -68,7 +69,7 @@ class UserDumpTest(APITestCase):
         client = self.get_logged_client()
         response = client.get('/api/user_dump/')
 
-        self.assertDictContainsSubset({'id': 1, 'username': 'testuser',
+        self.assertDictContainsSubset({'id': self.currentUser.id, 'username': 'testuser',
                                        'first_name': '', 'last_name': '',
                                        'email': ''}, response.data['user'])
 
@@ -77,11 +78,11 @@ class UserDumpTest(APITestCase):
         response = client.get('/api/user_dump/')
 
         self.assertEqual(len(response.data['courses']), 2)
-        self.assertDictContainsSubset({'id': 1, 'name': 'Operative System'}, response.data['courses'][0])
-        self.assertDictContainsSubset({'id': 1, 'name': 'Anna Rossi'}, response.data['courses'][0]['teacher'])
+        self.assertDictContainsSubset({'id': self.course1.id, 'name': 'Operative System'}, response.data['courses'][0])
+        self.assertDictContainsSubset({'id': self.course1.id, 'name': 'Anna Rossi'}, response.data['courses'][0]['teacher'])
 
-        self.assertDictContainsSubset({'id': 2, 'name': 'Telecom'}, response.data['courses'][1])
-        self.assertDictContainsSubset({'id': 2, 'name': 'Carlo Verdi'}, response.data['courses'][1]['teacher'])
+        self.assertDictContainsSubset({'id': self.course2.id, 'name': 'Telecom'}, response.data['courses'][1])
+        self.assertDictContainsSubset({'id': self.course2.id, 'name': 'Carlo Verdi'}, response.data['courses'][1]['teacher'])
 
     def test_userdump_should_not_contain_unauthorized_courses(self):
         client = self.get_logged_client()
@@ -94,10 +95,10 @@ class UserDumpTest(APITestCase):
         response = client.get('/api/user_dump/')
 
         self.assertEqual(len(response.data['recordings']), 3)
-        self.assertDictContainsSubset({'id': 1, 'name': 'First Registration'}, response.data['recordings'][0])
+        self.assertDictContainsSubset({'id': self.r1.id, 'name': 'First Registration'}, response.data['recordings'][0])
         self.assertEqual(response.data['recordings'][0]['course']['id'], self.course1.id)
 
-        self.assertDictContainsSubset({'id': 3, 'name': 'Third Registration'}, response.data['recordings'][2])
+        self.assertDictContainsSubset({'id': self.r3.id, 'name': 'Third Registration'}, response.data['recordings'][2])
         self.assertEqual(response.data['recordings'][2]['course']['id'], self.course2.id)
 
     def test_userdump_contains_pins(self):
