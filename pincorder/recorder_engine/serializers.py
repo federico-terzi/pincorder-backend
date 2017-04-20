@@ -25,11 +25,11 @@ class CourseSerializer(serializers.ModelSerializer):
     """
     Serializer used to manage courses
     """
-    teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all())
+    teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all(), required=False)
 
     class Meta:
         model = Course
-        fields = ('id', 'name', 'teacher')
+        fields = ('id', 'name', 'teacher', 'parent_course')
 
 
 class PinSerializer(serializers.ModelSerializer):
@@ -99,7 +99,7 @@ class UserDumpCourseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ('id', 'name', 'teacher')
+        fields = ('id', 'name', 'teacher', 'parent_course')
 
 
 class UserDumpCourseOnlyIdSerializer(serializers.ModelSerializer):

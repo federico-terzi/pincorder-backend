@@ -273,9 +273,11 @@ class RecordingViewSet(viewsets.ModelViewSet):
         # Get the posted recording
         recording = serializer.get_recording()
 
-        # Check if the user is allowed to write in this course, if not, throw an exception
-        if self.request.user not in recording.course.authorized_users.all():
-            raise PermissionDenied("You're not allowed to write in this course!")
+        # Check if a course is specified by the request
+        if recording.course is not None:
+            # Check if the user is allowed to write in this course, if not, throw an exception
+            if self.request.user not in recording.course.authorized_users.all():
+                raise PermissionDenied("You're not allowed to write in this course!")
 
         # If the user is authorized, save the recording
         serializer.save(user=self.request.user)
@@ -297,6 +299,78 @@ class CourseViewSet(viewsets.ModelViewSet):
 
         # Return the courses that the current user is authorized to view
         return Course.objects.filter(authorized_users__in=[self.request.user])
+
+    @list_route(methods=['post'])
+    def add_course_with_teacher(self, request):
+        """
+        Create a Course object and automatically create a Teacher object associated
+        """
+        # Check if the request contains the 'teacher' parameter
+        if 'teacher' not in request.data:
+            raise APIException("ERROR: You must specify the 'teacher' parameter! ( Teacher name )")
+
+        # Check that the teacher parameter is not blank or null
+        if not request.data['teacher']:
+            raise APIException("ERROR: The teacher name can't be blank!")
+
+        # Create a teacher object
+        teacher = Teacher.objects.create(name=request.data['teacher'])
+
+        # Copy the request data, in order to edit it later
+        data = request.data.copy()
+
+        # Update the teacher parameter, placing the correct teacher primary key
+        data['teacher'] = teacher.id
+
+        # Initialize the CourseSerializer with the edited request data
+        serializer = CourseSerializer(data=data, context={'request': request})
+
+        # Make sure that the serializer is valid
+        if serializer.is_valid():
+            # Save the course and get the Course instance
+            course = serializer.save()
+
+            # Add the current user to the course's authorized list
+            course.authorized_users.add(self.request.user)
+
+            # Return an OK response
+            return Response('OK')
+        else:
+            # If serializer is not valid, raise an error
+            raise APIException('ERROR: '+str(serializer.errors))
+
+    @detail_route(methods=['post'])
+    def add_teacher(self, request, pk=None):
+        """
+        Create a Teacher instance and add it to the specified course.
+        Can be used to modify an existing course teacher.
+        """
+        # Check that the user is authorized to edit the course, if not raise an exception
+        if not (Course.objects.filter(id=pk).filter(authorized_users__in=[self.request.user]).exists()):
+            raise Http404("ERROR: Course doesn't exists or you're not authorized!")
+
+        # Check if the request contains the 'teacher' parameter
+        if 'teacher' not in request.data:
+            raise APIException("ERROR: You must specify the 'teacher' parameter! ( Teacher name )")
+
+        # Check that the teacher parameter is not blank or null
+        if not request.data['teacher']:
+            raise APIException("ERROR: The teacher name can't be blank!")
+
+        # Create a teacher object
+        teacher = Teacher.objects.create(name=request.data['teacher'])
+
+        # Get the current course
+        course = Course.objects.get(id=pk)
+
+        # Change the teacher with the newly created one
+        course.teacher = teacher
+
+        # Save the course
+        course.save()
+
+        # Return an OK response
+        return Response('OK')
 
     def perform_create(self, serializer):
         # Get the course and add the current user to the authorized group
