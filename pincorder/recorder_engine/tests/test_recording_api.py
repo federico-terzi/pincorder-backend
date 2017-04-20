@@ -112,6 +112,15 @@ class RecordingTest(APITestCase):
         self.assertEqual(lastRecording.user, self.currentUser)
         self.assertEqual(lastRecording.course, self.course1)
 
+    def test_add_recording_without_course(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/', {'name': 'Test Recording', 'date': timezone.now()})
+
+        lastRecording = Recording.objects.last()
+
+        self.assertEqual(lastRecording.name, 'Test Recording')
+        self.assertEqual(lastRecording.user, self.currentUser)
+
     def test_add_recording_to_unauthorized_course_should_fail(self):
         client = self.get_logged_client()
         response = client.post('/api/recordings/', {'name': 'Test Recording', 'date': timezone.now(),
