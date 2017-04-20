@@ -25,7 +25,7 @@ class CourseSerializer(serializers.ModelSerializer):
     """
     Serializer used to manage courses
     """
-    teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all())
+    teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all(), required=False)
 
     class Meta:
         model = Course
