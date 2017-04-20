@@ -136,6 +136,17 @@ class RecordingTest(APITestCase):
 
         self.assertEqual(recording.name, 'New Name')
 
+    def test_edit_recording_with_course_null(self):
+        client = self.get_logged_client()
+
+        recording = Recording.objects.first()
+        self.assertEqual(recording.course, self.course1)
+
+        response = client.patch('/api/recordings/'+str(self.r1.id)+'/', {'name': 'New Name', 'course': None})
+
+        recording = Recording.objects.first()
+        self.assertEqual(recording.course, None)
+
     def test_edit_unauthorized_recording_should_fail(self):
         client = self.get_logged_client(self.currentUser2)
         response = client.patch('/api/recordings/'+str(self.r1.id)+'/', {'name': 'New Name'})
