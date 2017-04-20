@@ -29,6 +29,10 @@ class Teacher(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        # Teachers will be ordered in ascending order by the name
+        ordering = ['name']
+
 
 class Course(models.Model):
     """
@@ -48,6 +52,10 @@ class Course(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        # Courses will be ordered in ascending order by the ID
+        ordering = ['id']
 
 
 class Recording(models.Model):
@@ -78,6 +86,10 @@ class Recording(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        # Recordings will be ordered in ascending order by the ID
+        ordering = ['id']
 
 
 class RecordingFile(models.Model):

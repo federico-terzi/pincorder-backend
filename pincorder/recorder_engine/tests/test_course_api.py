@@ -11,6 +11,7 @@ class CourseTest(APITestCase):
         self.currentUser2 = User.objects.create(username="testuser2")
 
         teacher = Teacher.objects.create(name="Anna Rossi")
+        self.t1 = teacher
         course = Course.objects.create(name="Operative System", teacher=teacher)
         course.authorized_users.add(self.currentUser)
 
@@ -23,6 +24,10 @@ class CourseTest(APITestCase):
         teacher3 = Teacher.objects.create(name="Paola Gialli")
         course3 = Course.objects.create(name="Math", teacher=teacher3)
         course3.authorized_users.add(self.currentUser2)
+
+        self.course1 = course
+        self.course2 = course2
+        self.course3 = course3
 
     def get_logged_client(self, user=None):
         if user is None:
@@ -38,7 +43,7 @@ class CourseTest(APITestCase):
 
     def test_user_cant_see_courses_where_he_is_not_authorized(self):
         client = self.get_logged_client()
-        response = client.get('/api/courses/3/')
+        response = client.get('/api/courses/{id}/'.format(id=self.course3.id))
         self.assertEqual(response.status_code, 404)
 
     def test_course_should_be_authorized(self):
@@ -64,7 +69,7 @@ class CourseTest(APITestCase):
 
     def test_add_course(self):
         client = self.get_logged_client()
-        response = client.post('/api/courses/', {'name': 'Course 1', 'teacher': 1})
+        response = client.post('/api/courses/', {'name': 'Course 1', 'teacher': self.t1.id})
 
         self.assertTrue(Course.objects.filter(name='Course 1').exists())
         self.assertEqual(Course.objects.get(name='Course 1').teacher.name, "Anna Rossi")
