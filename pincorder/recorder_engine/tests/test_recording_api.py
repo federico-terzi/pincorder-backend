@@ -82,7 +82,7 @@ class RecordingTest(APITestCase):
 
     def test_recording_get_details(self):
         client = self.get_logged_client()
-        response = client.get('/api/recordings/1/')
+        response = client.get('/api/recordings/'+str(self.r1.id)+'/')
 
         self.assertDictContainsSubset({'name': 'First Registration', 'status': 'SUBMITTED', 'is_online': False,
                                        'is_converted': False, 'course': self.course1.id}, response.data)

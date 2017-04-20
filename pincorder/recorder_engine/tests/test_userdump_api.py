@@ -79,10 +79,10 @@ class UserDumpTest(APITestCase):
 
         self.assertEqual(len(response.data['courses']), 2)
         self.assertDictContainsSubset({'id': self.course1.id, 'name': 'Operative System'}, response.data['courses'][0])
-        self.assertDictContainsSubset({'id': self.course1.id, 'name': 'Anna Rossi'}, response.data['courses'][0]['teacher'])
+        self.assertDictContainsSubset({'id': self.course1.teacher.id, 'name': 'Anna Rossi'}, response.data['courses'][0]['teacher'])
 
         self.assertDictContainsSubset({'id': self.course2.id, 'name': 'Telecom'}, response.data['courses'][1])
-        self.assertDictContainsSubset({'id': self.course2.id, 'name': 'Carlo Verdi'}, response.data['courses'][1]['teacher'])
+        self.assertDictContainsSubset({'id': self.course2.teacher.id, 'name': 'Carlo Verdi'}, response.data['courses'][1]['teacher'])
 
     def test_userdump_should_not_contain_unauthorized_courses(self):
         client = self.get_logged_client()
