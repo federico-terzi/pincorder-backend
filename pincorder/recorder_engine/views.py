@@ -273,9 +273,11 @@ class RecordingViewSet(viewsets.ModelViewSet):
         # Get the posted recording
         recording = serializer.get_recording()
 
-        # Check if the user is allowed to write in this course, if not, throw an exception
-        if self.request.user not in recording.course.authorized_users.all():
-            raise PermissionDenied("You're not allowed to write in this course!")
+        # Check if a course is specified by the request
+        if recording.course is not None:
+            # Check if the user is allowed to write in this course, if not, throw an exception
+            if self.request.user not in recording.course.authorized_users.all():
+                raise PermissionDenied("You're not allowed to write in this course!")
 
         # If the user is authorized, save the recording
         serializer.save(user=self.request.user)
