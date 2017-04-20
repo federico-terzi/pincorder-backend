@@ -99,7 +99,7 @@ class UserDumpCourseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ('id', 'name', 'teacher')
+        fields = ('id', 'name', 'teacher', 'parent_course')
 
 
 class UserDumpCourseOnlyIdSerializer(serializers.ModelSerializer):
