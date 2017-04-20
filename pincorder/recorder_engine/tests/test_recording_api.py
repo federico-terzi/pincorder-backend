@@ -95,7 +95,7 @@ class RecordingTest(APITestCase):
 
     def test_recording_should_not_be_visible_from_another_user(self):
         client = self.get_logged_client(self.currentUser2)
-        response = client.get('/api/recordings/1/')
+        response = client.get('/api/recordings/'+str(self.r1.id)+'/')
 
         self.assertEqual(response.status_code, 404)
 
@@ -130,7 +130,7 @@ class RecordingTest(APITestCase):
 
     def test_edit_recording(self):
         client = self.get_logged_client()
-        response = client.patch('/api/recordings/1/', {'name': 'New Name'})
+        response = client.patch('/api/recordings/'+str(self.r1.id)+'/', {'name': 'New Name'})
 
         recording = Recording.objects.first()
 
@@ -138,7 +138,7 @@ class RecordingTest(APITestCase):
 
     def test_edit_unauthorized_recording_should_fail(self):
         client = self.get_logged_client(self.currentUser2)
-        response = client.patch('/api/recordings/1/', {'name': 'New Name'})
+        response = client.patch('/api/recordings/'+str(self.r1.id)+'/', {'name': 'New Name'})
 
         recording = Recording.objects.first()
 
@@ -147,7 +147,7 @@ class RecordingTest(APITestCase):
     def test_delete_recording(self):
         client = self.get_logged_client()
         initialCount = Recording.objects.count()
-        response = client.delete('/api/recordings/1/')
+        response = client.delete('/api/recordings/'+str(self.r1.id)+'/')
 
         self.assertEqual(initialCount, Recording.objects.count()+1)
 
@@ -159,7 +159,7 @@ class RecordingTest(APITestCase):
                                format='multipart')
         #print(response.content)
         filename = response.data['file_url']
-        response = client.delete('/api/recordings/1/')
+        response = client.delete('/api/recordings/'+str(self.r1.id)+'/')
 
         self.assertFalse(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
         self.assertEqual(initialCount, Recording.objects.count()+1)
@@ -303,13 +303,13 @@ class RecordingTest(APITestCase):
 
         self.assertEqual(self.r1.pin_set.count(), 5)
 
-        pin = Pin.objects.get(id=4)
+        pin = Pin.objects.get(text='Test Pin')
 
         self.assertEqual(pin.text, 'Test Pin')
         self.assertEqual(pin.recording, self.r1)
         self.assertEqual(pin.time, 200)
 
-        pin = Pin.objects.get(id=5)
+        pin = Pin.objects.get(text='Test Pin 2')
 
         self.assertEqual(pin.text, 'Test Pin 2')
         self.assertEqual(pin.recording, self.r1)
@@ -322,13 +322,13 @@ class RecordingTest(APITestCase):
 
         self.assertEqual(self.r1.pin_set.count(), 4)
 
-        pin = Pin.objects.get(id=1)
+        pin = Pin.objects.get(text='Test Pin')
 
         self.assertEqual(pin.text, 'Test Pin')
         self.assertEqual(pin.recording, self.r1)
         self.assertEqual(pin.time, 10)
 
-        pin = Pin.objects.get(id=4)
+        pin = Pin.objects.get(text='Test Pin 2')
 
         self.assertEqual(pin.text, 'Test Pin 2')
         self.assertEqual(pin.recording, self.r1)
