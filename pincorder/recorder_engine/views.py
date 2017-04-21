@@ -135,6 +135,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
         """
         Add or Update a Pin
         """
+
         # Check if the user is the author of the recording, if not throw and exception
         if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
             raise Http404("ERROR: You can't access this recording or it doesn't exists")
@@ -154,6 +155,10 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
             # If the media_url param exists, update it
             if 'media_url' in request.data:
+                # Check the media_url file format, only JPG and PNG is accepted.
+                if not request.data['media_url'].name.endswith(".jpg") and not request.data['media_url'].name.endswith(
+                        ".png"):
+                    raise APIException("ERROR: Wrong file format!")
                 # Delete the old image
                 pin.media_url.delete()
                 # Get the uploaded file
@@ -183,6 +188,11 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
                 # If the media_url param exists, update it
                 if 'media_url' in request.data:
+                    # Check the media_url file format, only JPG and PNG is accepted.
+                    if not request.data['media_url'].name.endswith(".jpg") and not request.data[
+                        'media_url'].name.endswith(
+                            ".png"):
+                        raise APIException("ERROR: Wrong file format!")
                     # Delete the old image
                     pin.media_url.delete()
                     # Get the uploaded file

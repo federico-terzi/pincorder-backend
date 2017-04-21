@@ -236,6 +236,7 @@ class RecordingTest(APITestCase):
         lastPin = Pin.objects.last()
 
         self.assertTrue(lastPin.media_url is not None)
+        self.assertNotEqual(lastPin.media_url.name, '')
         self.assertEqual(lastPin.recording, self.r1)
         self.assertEqual(lastPin.time, 200)
 
@@ -243,6 +244,24 @@ class RecordingTest(APITestCase):
 
         # Deleting file
         os.remove(os.path.join(settings.MEDIA_ROOT, filename))
+
+    def test_add_pin_wrong_media_format_should_fail(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id),
+                               {'time': 200, 'text': 'Test Pin',
+                                'media_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                               format='multipart')
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(self.r4.pin_set.count(), 0)
+
+    def test_edit_pin_wrong_media_format_should_fail(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id),
+                               {'time': 10, 'text': 'Test Pin',
+                                'media_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                               format='multipart')
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(self.r1.pin_set.first().media_url.name, '')
 
     def test_add_pin_to_unauthorized_recording_should_fail(self):
         client = self.get_logged_client()
