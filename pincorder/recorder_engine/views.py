@@ -389,8 +389,11 @@ class UserDump(APIView):
         # Get all the courses that user is authorized to view
         courses = Course.objects.filter(authorized_users__in=[request.user])
 
+        # Get all the user related teachers
+        teachers = Teacher.objects.filter(course__authorized_users__in=[request.user])
+
         # Serialize all the UserDump
         serializer = UserDumpSerializer({'recordings': recordings, 'user': request.user,
-                                         'courses': courses})
+                                         'courses': courses, 'teachers': teachers})
 
         return Response(serializer.data)
