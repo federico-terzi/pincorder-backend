@@ -95,7 +95,6 @@ class UserDumpCourseSerializer(serializers.ModelSerializer):
     """
     Serializer used to display Course data in the UserDump
     """
-    teacher = UserDumpTeacherSerializer()
 
     class Meta:
         model = Course
@@ -139,6 +138,7 @@ class UserDumpSerializer(serializers.Serializer):
     """
 
     user = UserDumpUserSerializer()
+    teachers = UserDumpTeacherSerializer(many=True)
     courses = UserDumpCourseSerializer(many=True)
     recordings = UserDumpRecordingSerializer(many=True)
 
