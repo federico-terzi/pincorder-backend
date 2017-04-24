@@ -126,8 +126,6 @@ class UserDumpRecordingSerializer(serializers.ModelSerializer):
     """
 
     # Uncomment if you want full information of the course in the recording
-    # course = UserDumpCourseSerializer()
-    course = UserDumpCourseOnlyIdSerializer()
     pin_set = UserDumpPinSerializer(many=True)
 
     class Meta:

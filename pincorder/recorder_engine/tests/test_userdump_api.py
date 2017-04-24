@@ -96,10 +96,10 @@ class UserDumpTest(APITestCase):
 
         self.assertEqual(len(response.data['recordings']), 3)
         self.assertDictContainsSubset({'id': self.r1.id, 'name': 'First Registration'}, response.data['recordings'][0])
-        self.assertEqual(response.data['recordings'][0]['course']['id'], self.course1.id)
+        self.assertEqual(response.data['recordings'][0]['course'], self.course1.id)
 
         self.assertDictContainsSubset({'id': self.r3.id, 'name': 'Third Registration'}, response.data['recordings'][2])
-        self.assertEqual(response.data['recordings'][2]['course']['id'], self.course2.id)
+        self.assertEqual(response.data['recordings'][2]['course'], self.course2.id)
 
     def test_userdump_contains_pins(self):
         client = self.get_logged_client()

@@ -385,19 +385,12 @@ class UserDump(APIView):
     def get(self, request, format=None):
         # Get all the recordings for the current user
         recordings = Recording.objects.filter(user=request.user)
-        # Serialize the recordings
-        recording_serializer = UserDumpRecordingSerializer(recordings, many=True)
-
-        # Serialize the user info
-        user_serializer = UserDumpUserSerializer(request.user)
 
         # Get all the courses that user is authorized to view
         courses = Course.objects.filter(authorized_users__in=[request.user])
-        # Serialize the courses information
-        courses_serializer = UserDumpCourseSerializer(courses, many=True)
 
         # Serialize all the UserDump
-        serializer = UserDumpSerializer({'recordings': recording_serializer.data, 'user': user_serializer.data,
-                                         'courses': courses_serializer.data})
+        serializer = UserDumpSerializer({'recordings': recordings, 'user': request.user,
+                                         'courses': courses})
 
         return Response(serializer.data)
