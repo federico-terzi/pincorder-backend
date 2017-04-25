@@ -280,6 +280,9 @@ class RecordingViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
+        """
+        Called when a Recording object is created
+        """
         # Get the posted recording
         recording = serializer.get_recording()
 
@@ -291,6 +294,22 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # If the user is authorized, save the recording
         serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        """
+        Called when a Recording object is updated
+        """
+        # Get the posted recording
+        recording = serializer.get_recording()
+
+        # Check if a course is specified by the request
+        if recording.course is not None:
+            # Check if the user is allowed to write in this course, if not, throw an exception
+            if self.request.user not in recording.course.authorized_users.all():
+                raise PermissionDenied("You're not allowed to write in this course!")
+
+        # If the user is authorized, save the recording
+        serializer.save()
 
 
 class CourseViewSet(viewsets.ModelViewSet):
