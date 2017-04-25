@@ -60,7 +60,7 @@ class RecordingSerializer(serializers.ModelSerializer):
     """
     Serializer used to manage recordings
     """
-    user = serializers.StringRelatedField()
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def get_recording(self):
         """
