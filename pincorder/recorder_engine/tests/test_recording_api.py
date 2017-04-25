@@ -194,6 +194,16 @@ class RecordingTest(APITestCase):
         self.assertFalse(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
         self.assertEqual(initialCount, Recording.objects.count()+1)
 
+    def test_delete_recording_check_pins_are_deleted(self):
+        client = self.get_logged_client()
+        initialCount = Recording.objects.count()
+
+        self.assertEqual(Pin.objects.filter(recording__id=self.r1.id).count(), 3)
+        response = client.delete('/api/recordings/'+str(self.r1.id)+'/')
+
+        self.assertEqual(Pin.objects.filter(recording__id=self.r1.id).count(), 0)
+        self.assertEqual(initialCount, Recording.objects.count()+1)
+
     def test_delete_unauthorized_recording_should_fail(self):
         client = self.get_logged_client(self.currentUser2)
         initialCount = Recording.objects.count()
