@@ -383,9 +383,39 @@ class CourseViewSet(viewsets.ModelViewSet):
         return Response('OK')
 
     def perform_create(self, serializer):
+        """
+        Called when a Course object is being created
+        """
         # Get the course and add the current user to the authorized group
+        course = serializer.get_course()
+
+        # If a parent_course is specified, check if the user is authorized to edit it
+        if course.parent_course is not None:
+            # If not authorized, throw an exception
+            if not Course.objects.filter(pk=course.parent_course.id)\
+                         .filter(authorized_users__in=[self.request.user]).exists():
+                raise PermissionDenied("ERROR: You can't set a parent course that you can't edit")
+
+        # Save the course and add the current user to the authorized group
         course = serializer.save()
         course.authorized_users.add(self.request.user)
+
+    def perform_update(self, serializer):
+        """
+        Called when a Course object is being updated
+        """
+        # Get the course and add the current user to the authorized group
+        course = serializer.get_course()
+
+        # If a parent_course is specified, check if the user is authorized to edit it
+        if course.parent_course is not None:
+            # If not authorized, throw an exception
+            if not Course.objects.filter(pk=course.parent_course.id) \
+                    .filter(authorized_users__in=[self.request.user]).exists():
+                raise PermissionDenied("ERROR: You can't set a parent course that you can't edit")
+
+        # Save the course and add the current user to the authorized group
+        course = serializer.save()
 
 
 class UserDump(APIView):

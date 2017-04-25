@@ -79,6 +79,25 @@ class CourseTest(APITestCase):
         # Check if user is added to authorized users
         self.assertIn(self.currentUser, Course.objects.get(name='Course 1').authorized_users.all())
 
+    def test_add_course_with_parent(self):
+        client = self.get_logged_client()
+        response = client.post('/api/courses/', {'name': 'Course 1', 'teacher': self.t1.id,
+                                                 'parent_course': self.course2.id})
+
+        self.assertTrue(Course.objects.filter(name='Course 1').exists())
+        self.assertEqual(Course.objects.get(name='Course 1').teacher.name, "Anna Rossi")
+        self.assertEqual(Course.objects.get(name='Course 1').parent_course.id, self.course2.id)
+
+        # Check if user is added to authorized users
+        self.assertIn(self.currentUser, Course.objects.get(name='Course 1').authorized_users.all())
+
+    def test_add_course_should_fail_unauthorized_parent(self):
+        client = self.get_logged_client()
+        response = client.post('/api/courses/', {'name': 'Course 1', 'teacher': self.t1.id,
+                                                 'parent_course': self.course3.id})
+
+        self.assertFalse(Course.objects.filter(name='Course 1').exists())
+
     def test_add_course_without_teacher(self):
         client = self.get_logged_client()
         response = client.post('/api/courses/', {'name': 'Course 1'})
@@ -156,6 +175,15 @@ class CourseTest(APITestCase):
 
         self.assertEqual(Course.objects.get(id=self.course1.id).teacher, self.t2)
 
+    def test_edit_course_parent_course(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).parent_course, None)
+
+        response = client.patch('/api/courses/{id}/'.format(id=self.course1.id), {'parent_course': self.course2.id})
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).parent_course.id, self.course2.id)
+
     def test_edit_course_should_fail_user_not_authorized(self):
         client = self.get_logged_client(self.currentUser2)
 
@@ -167,6 +195,15 @@ class CourseTest(APITestCase):
 
         # Check if user is added to authorized users
         self.assertNotIn(self.currentUser2, Course.objects.get(id=self.course1.id).authorized_users.all())
+
+    def test_edit_course_should_fail_unauthorized_parent_course(self):
+        client = self.get_logged_client(self.currentUser2)
+
+        self.assertEqual(Course.objects.get(id=self.course2.id).parent_course, None)
+
+        response = client.patch('/api/courses/{id}/'.format(id=self.course2.id), {'parent_course': self.course1.id})
+
+        self.assertEqual(Course.objects.get(id=self.course2.id).parent_course, None)
 
     def test_edit_course_should_fail_course_doesnt_exist(self):
         client = self.get_logged_client(self.currentUser2)

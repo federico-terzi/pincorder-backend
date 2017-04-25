@@ -27,6 +27,12 @@ class CourseSerializer(serializers.ModelSerializer):
     """
     teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all(), required=False)
 
+    def get_course(self):
+        """
+        Return a Course object with the validated data, without saving it
+        """
+        return Course(**self.validated_data)
+
     class Meta:
         model = Course
         fields = ('id', 'name', 'teacher', 'parent_course')
@@ -67,6 +73,7 @@ class RecordingSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'user')
         read_only_fields = ('id', 'status', 'is_online', 'is_converted', 'user')
 
+
 """
 The UserDump* classes are used in the UserDumpAPI, where all the information
 about the current user is returned
@@ -77,6 +84,7 @@ class UserDumpUserSerializer(serializers.ModelSerializer):
     """
     Serializer used to display User data in the UserDump
     """
+
     class Meta:
         model = User
         fields = ('id', 'username', 'first_name', 'last_name', 'email')
@@ -86,6 +94,7 @@ class UserDumpTeacherSerializer(serializers.ModelSerializer):
     """
     Serializer used to display Teacher data in the UserDump
     """
+
     class Meta:
         model = Teacher
         fields = ('id', 'name')
@@ -105,6 +114,7 @@ class UserDumpCourseOnlyIdSerializer(serializers.ModelSerializer):
     """
     Serializer used to display the Course id in the UserDump
     """
+
     class Meta:
         model = Course
         fields = ('id',)
@@ -114,6 +124,7 @@ class UserDumpPinSerializer(serializers.ModelSerializer):
     """
     Serializer used to display Pin data in the UserDump
     """
+
     class Meta:
         model = Pin
         fields = ('time', 'text', 'media_url')
