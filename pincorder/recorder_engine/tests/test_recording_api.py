@@ -25,6 +25,7 @@ class RecordingTest(APITestCase):
         course2 = Course.objects.create(name="Telecom", teacher=teacher2)
         course2.authorized_users.add(self.currentUser)
         course2.authorized_users.add(self.currentUser2)
+        self.course2 = course2
 
         # Add course, but don't authorize the testuser
         teacher3 = Teacher.objects.create(name="Paola Gialli")
@@ -154,6 +155,24 @@ class RecordingTest(APITestCase):
         recording = Recording.objects.first()
 
         self.assertNotEqual(recording.name, 'New Name')
+
+    def test_move_recording(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Recording.objects.get(id=self.r1.id).course.id, self.course1.id)
+
+        response = client.patch('/api/recordings/'+str(self.r1.id)+'/', {'course': self.course2.id})
+
+        self.assertEqual(Recording.objects.get(id=self.r1.id).course.id, self.course2.id)
+
+    def test_move_recording_should_fail_unauthorized_course(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Recording.objects.get(id=self.r1.id).course.id, self.course1.id)
+
+        response = client.patch('/api/recordings/'+str(self.r1.id)+'/', {'course': self.course3.id})
+
+        self.assertEqual(Recording.objects.get(id=self.r1.id).course.id, self.course1.id)
 
     def test_delete_recording(self):
         client = self.get_logged_client()
