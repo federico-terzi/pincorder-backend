@@ -32,10 +32,10 @@ class Profile(models.Model):
     )
 
     # Shared Recordings with the user
-    shared_recordings = models.ManyToManyField('Recording')
+    shared_recordings = models.ManyToManyField('Recording', blank=True)
 
     # Shared courses with the user
-    shared_courses = models.ManyToManyField('Course')
+    shared_courses = models.ManyToManyField('Course', blank=True)
 
 
 class Teacher(models.Model):
