@@ -559,11 +559,21 @@ class UserDump(APIView):
                                        .filter(privacy__gt=0)
 
         # Get all the shared recordings of the user, but not the private ones
+        # Shared recordings are the union of recordings that are directly shared
+        # or recordings belonging to a shared course
         # Note: the check of the privacy status is necessary because if a user shares
         #       a recording and then makes it private again, the shared user
         #       shouldn't be able to view it.
-        shared_recordings = Recording.objects.filter(id__in=request.user.profile.shared_recordings.values('id')) \
-                                          .filter(privacy__gt=0)
+
+        # Get the recordings shared directly with the user
+        shared_recordings_only = Recording.objects.filter(id__in=request.user.profile.shared_recordings.values('id')) \
+                                                  .filter(privacy__gt=0)
+
+        # Get the recordings belonging to a shared course
+        shared_recordings_from_courses = Recording.objects.filter(course__id__in=shared_courses.values('id'))
+
+        # Union of the two sources of recordings
+        shared_recordings = (shared_recordings_only | shared_recordings_from_courses)
 
         # Serialize all the UserDump
         serializer = UserDumpSerializer({'recordings': recordings, 'user': request.user,

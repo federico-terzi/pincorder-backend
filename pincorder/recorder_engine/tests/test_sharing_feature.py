@@ -244,6 +244,24 @@ class SharingTest(APITestCase):
                                       response.data['shared_courses'][0])
         self.assertDictContainsSubset({'teacher': self.course3.teacher.id}, response.data['shared_courses'][0])
 
+    def test_userdump_contains_recordings_belonging_to_shared_courses(self):
+        client = self.get_logged_client()
+
+        self.currentUser.profile.shared_courses.add(self.course3)
+        self.currentUser.save()
+
+        self.course3.privacy = 1
+        self.course3.save()
+
+        response = client.get('/api/user_dump/')
+
+        self.assertEqual(len(response.data['shared_courses']), 1)
+        self.assertDictContainsSubset({'id': self.course3.id, 'name': self.course3.name, 'privacy': 1},
+                                      response.data['shared_courses'][0])
+        self.assertDictContainsSubset({'teacher': self.course3.teacher.id}, response.data['shared_courses'][0])
+        self.assertDictContainsSubset({'id': self.r4.id, 'name': self.r4.name, 'privacy': 0},
+                                      response.data['shared_recordings'][0])
+
     def test_userdump_contains_shared_courses_that_are_public(self):
         client = self.get_logged_client()
 
