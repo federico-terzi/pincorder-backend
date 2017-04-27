@@ -81,10 +81,10 @@ class UserDumpTest(APITestCase):
         response = client.get('/api/user_dump/')
 
         self.assertEqual(len(response.data['courses']), 2)
-        self.assertDictContainsSubset({'id': self.course1.id, 'name': 'Operative System'}, response.data['courses'][0])
+        self.assertDictContainsSubset({'id': self.course1.id, 'name': 'Operative System', 'privacy': 0}, response.data['courses'][0])
         self.assertDictContainsSubset({'teacher': self.course1.teacher.id}, response.data['courses'][0])
 
-        self.assertDictContainsSubset({'id': self.course2.id, 'name': 'Telecom'}, response.data['courses'][1])
+        self.assertDictContainsSubset({'id': self.course2.id, 'name': 'Telecom', 'privacy': 0}, response.data['courses'][1])
         self.assertDictContainsSubset({'teacher': self.course2.teacher.id}, response.data['courses'][1])
 
     def test_userdump_should_not_contain_unauthorized_courses(self):
@@ -98,10 +98,10 @@ class UserDumpTest(APITestCase):
         response = client.get('/api/user_dump/')
 
         self.assertEqual(len(response.data['recordings']), 3)
-        self.assertDictContainsSubset({'id': self.r1.id, 'name': 'First Registration'}, response.data['recordings'][0])
+        self.assertDictContainsSubset({'id': self.r1.id, 'name': 'First Registration', 'privacy':0}, response.data['recordings'][0])
         self.assertEqual(response.data['recordings'][0]['course'], self.course1.id)
 
-        self.assertDictContainsSubset({'id': self.r3.id, 'name': 'Third Registration'}, response.data['recordings'][2])
+        self.assertDictContainsSubset({'id': self.r3.id, 'name': 'Third Registration', 'privacy':0}, response.data['recordings'][2])
         self.assertEqual(response.data['recordings'][2]['course'], self.course2.id)
 
     def test_userdump_contains_teachers(self):

@@ -1,8 +1,10 @@
 import os, uuid
+
+from django.contrib.auth.models import User
 from django.db import models
 from django.conf import settings
 from django.utils.timezone import now
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 
@@ -18,6 +20,23 @@ def unique_name_generator(instance, filename):
 
 
 # Models
+
+class Profile(models.Model):
+    """
+    Model connected to a user and represents the user profile data
+    """
+    # User to which the Profile belongs to
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+    )
+
+    # Shared Recordings with the user
+    shared_recordings = models.ManyToManyField('Recording', blank=True)
+
+    # Shared courses with the user
+    shared_courses = models.ManyToManyField('Course', blank=True)
+
 
 class Teacher(models.Model):
     """
@@ -49,6 +68,10 @@ class Course(models.Model):
 
     # Users that are authorized to view the course
     authorized_users = models.ManyToManyField('auth.user')
+
+    # Represents the privacy level of the course
+    # 0 is private, 1 is shared and 2 is public
+    privacy = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -83,6 +106,10 @@ class Recording(models.Model):
 
     # The recording author User
     user = models.ForeignKey('auth.user')
+
+    # Represents the privacy level of the recording
+    # 0 is private, 1 is shared and 2 is public
+    privacy = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -161,3 +188,22 @@ def recording_file_post_delete_handler(sender, **kwargs):
     if recording_file.file_url:
         storage, path = recording_file.file_url.storage, recording_file.file_url.path
         storage.delete(path)
+
+
+# Signals used to keep the profile in sync with the user
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    """
+    When a new user is created, create a new profile linked to it
+    """
+    if created:
+        Profile.objects.create(user=instance)
+
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    """
+    When a user is updated, save the profile
+    """
+    instance.profile.save()

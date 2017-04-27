@@ -86,11 +86,11 @@ class RecordingTest(APITestCase):
         response = client.get('/api/recordings/'+str(self.r1.id)+'/')
 
         self.assertDictContainsSubset({'name': 'First Registration', 'status': 'SUBMITTED', 'is_online': False,
-                                       'is_converted': False, 'course': self.course1.id}, response.data)
+                                       'is_converted': False, 'course': self.course1.id, 'privacy': 0}, response.data)
 
     def test_recording_should_not_exist(self):
         client = self.get_logged_client()
-        response = client.get('/api/recordings/1000/')
+        response = client.get('/api/recordings/10000/')
 
         self.assertEqual(response.status_code, 404)
 
@@ -136,6 +136,26 @@ class RecordingTest(APITestCase):
         recording = Recording.objects.first()
 
         self.assertEqual(recording.name, 'New Name')
+
+    def test_make_recording_shared(self):
+        client = self.get_logged_client()
+        recording = Recording.objects.first()
+        self.assertEqual(recording.privacy, 0)
+
+        response = client.patch('/api/recordings/' + str(self.r1.id) + '/', {'privacy': 1})
+
+        recording = Recording.objects.first()
+        self.assertEqual(recording.privacy, 1)
+
+    def test_make_recording_public(self):
+        client = self.get_logged_client()
+        recording = Recording.objects.first()
+        self.assertEqual(recording.privacy, 0)
+
+        response = client.patch('/api/recordings/' + str(self.r1.id) + '/', {'privacy': 2})
+
+        recording = Recording.objects.first()
+        self.assertEqual(recording.privacy, 2)
 
     def test_edit_recording_with_course_null(self):
         client = self.get_logged_client()

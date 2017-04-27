@@ -85,6 +85,12 @@ class CourseTest(APITestCase):
         self.assertContains(response, text="Telecom", status_code=200)
         self.assertNotContains(response, text="Math", status_code=200)
 
+    def test_course_has_privacy(self):
+        client = self.get_logged_client()
+        response = client.get('/api/courses/'+str(self.course1.id)+"/")
+
+        self.assertEqual(response.data['privacy'], 0)
+
     def test_show_course_list_for_testuser2(self):
         client = self.get_logged_client(self.currentUser2)
         response = client.get('/api/courses/')
@@ -198,6 +204,24 @@ class CourseTest(APITestCase):
                                 {'name': 'Course 1', 'teacher': self.t2.id})
 
         self.assertEqual(Course.objects.get(id=self.course1.id).teacher, self.t2)
+
+    def test_make_course_shared(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 0)
+
+        response = client.patch('/api/courses/{id}/'.format(id=self.course1.id), {'privacy': 1})
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 1)
+
+    def test_make_course_public(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 0)
+
+        response = client.patch('/api/courses/{id}/'.format(id=self.course1.id), {'privacy': 2})
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 2)
 
     def test_edit_course_parent_course(self):
         client = self.get_logged_client()
