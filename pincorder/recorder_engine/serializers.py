@@ -35,7 +35,7 @@ class CourseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ('id', 'name', 'teacher', 'parent_course')
+        fields = ('id', 'name', 'teacher', 'parent_course', 'privacy')
 
 
 class PinSerializer(serializers.ModelSerializer):
@@ -107,17 +107,7 @@ class UserDumpCourseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ('id', 'name', 'teacher', 'parent_course')
-
-
-class UserDumpCourseOnlyIdSerializer(serializers.ModelSerializer):
-    """
-    Serializer used to display the Course id in the UserDump
-    """
-
-    class Meta:
-        model = Course
-        fields = ('id',)
+        fields = ('id', 'name', 'teacher', 'parent_course', 'privacy')
 
 
 class UserDumpPinSerializer(serializers.ModelSerializer):
@@ -152,6 +142,8 @@ class UserDumpSerializer(serializers.Serializer):
     teachers = UserDumpTeacherSerializer(many=True)
     courses = UserDumpCourseSerializer(many=True)
     recordings = UserDumpRecordingSerializer(many=True)
+    shared_courses = UserDumpCourseSerializer(many=True)
+    shared_recordings = UserDumpRecordingSerializer(many=True)
 
     # The UserDump is read only, so no creation is allowed
     def create(self, validated_data):

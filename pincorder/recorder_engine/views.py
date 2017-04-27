@@ -38,7 +38,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # Get the recordings made by the user and having a name that contains the specified param
         recordings = Recording.objects.filter(user=self.request.user) \
-                                      .filter(name__contains=request.query_params['name'])
+            .filter(name__contains=request.query_params['name'])
 
         # Serialize the data
         serializer = RecordingSerializer(recordings, many=True, context={'request': request})
@@ -53,7 +53,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # Fetch the files for the current user and Recording id
         files = RecordingFile.objects.filter(recording__user_id=self.request.user) \
-                                     .filter(recording__id=pk)
+            .filter(recording__id=pk)
 
         # Check if recording has files
         if files.count() == 0:
@@ -102,7 +102,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
         # Check if the serialized data is valid
         if serializer.is_valid():
             # Check that the file is an AAC audio file or MP3 audio file
-            if not request.data['file_url'].name.endswith(".aac") and not request.data['file_url'].name.endswith(".mp3"):
+            if not request.data['file_url'].name.endswith(".aac") and not request.data['file_url'].name.endswith(
+                    ".mp3"):
                 raise APIException("ERROR: Wrong file format!")
 
             # Save and get the RecordingFile
@@ -191,7 +192,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
                     # Check the media_url file format, only JPG and PNG is accepted.
                     if not request.data['media_url'].name.endswith(".jpg") and not request.data[
                         'media_url'].name.endswith(
-                            ".png"):
+                        ".png"):
                         raise APIException("ERROR: Wrong file format!")
                     # Delete the old image
                     pin.media_url.delete()
@@ -206,7 +207,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data)
             else:
                 # If the serialized data is not valid, raise an error
-                raise APIException("ERROR: "+str(serializer.errors))
+                raise APIException("ERROR: " + str(serializer.errors))
 
     @detail_route(methods=['delete'])
     def delete_pin(self, request, pk=None):
@@ -278,6 +279,55 @@ class RecordingViewSet(viewsets.ModelViewSet):
             serializer.save()
 
         return Response(serializer.data)
+
+    @detail_route(methods=['post'])
+    def share_recording_with_user(self, request, pk=None):
+        """
+        Share a recording with the specified user
+        """
+
+        # Check if the user is the author of the recording, if not throw and exception
+        if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
+            raise Http404("ERROR: You can't access this recording or it doesn't exists")
+
+        # Make sure that the user passes the 'shared_user' POST parameter, if not, raise an exception
+        if 'shared_user' not in self.request.data:
+            raise APIException("ERROR: You must specify the 'shared_user' parameter containing the data")
+
+        # Get the shared user ID from the batch POST parameter
+        shared_user_id = self.request.data['shared_user']
+
+        # Try to get the shared user object
+        try:
+            # Get the user object
+            shared_user = User.objects.get(id=shared_user_id)
+
+            # Get the current recording
+            recording = Recording.objects.get(pk=pk)
+
+            # If the recording is private ( privacy = 0 ), make the recording shared ( privacy = 1 )
+            # Note: if the recording is already shared, or is public, this doesn't modify it
+            if recording.privacy == 0:
+                # Change the recording privacy to shared
+                recording.privacy = 1
+
+            # Save the recording
+            recording.save()
+
+            # If the recording wasn't already shared with the shared user
+            if recording not in shared_user.profile.shared_recordings.all():
+                # Add the recording to the collection of shared recordings of the shared user
+                shared_user.profile.shared_recordings.add(recording)
+
+                # Then save the changes
+                shared_user.save()
+
+            # Return an OK response
+            return Response("OK")
+
+        except User.DoesNotExist:
+            # Raise an exception if the user doesn't exist
+            raise Http404("ERROR: shared user not found!")
 
     def perform_create(self, serializer):
         """
@@ -366,7 +416,7 @@ class CourseViewSet(viewsets.ModelViewSet):
             return Response('OK')
         else:
             # If serializer is not valid, raise an error
-            raise APIException('ERROR: '+str(serializer.errors))
+            raise APIException('ERROR: ' + str(serializer.errors))
 
     @detail_route(methods=['post'])
     def add_teacher(self, request, pk=None):
@@ -401,6 +451,55 @@ class CourseViewSet(viewsets.ModelViewSet):
         # Return an OK response
         return Response('OK')
 
+    @detail_route(methods=['post'])
+    def share_course_with_user(self, request, pk=None):
+        """
+        Share a course with the specified user
+        """
+
+        # Check that the user is authorized to edit the course, if not raise an exception
+        if not (Course.objects.filter(id=pk).filter(authorized_users__in=[self.request.user]).exists()):
+            raise Http404("ERROR: Course doesn't exists or you're not authorized!")
+
+        # Make sure that the user passes the 'shared_user' POST parameter, if not, raise an exception
+        if 'shared_user' not in self.request.data:
+            raise APIException("ERROR: You must specify the 'shared_user' parameter containing the data")
+
+        # Get the shared user ID from the batch POST parameter
+        shared_user_id = self.request.data['shared_user']
+
+        # Try to get the shared user object
+        try:
+            # Get the user object
+            shared_user = User.objects.get(id=shared_user_id)
+
+            # Get the current course
+            course = Course.objects.get(pk=pk)
+
+            # If the course is private ( privacy = 0 ), make the course shared ( privacy = 1 )
+            # Note: if the course is already shared, or is public, this doesn't modify it
+            if course.privacy == 0:
+                # Change the course privacy to shared
+                course.privacy = 1
+
+            # Save the course
+            course.save()
+
+            # If the course wasn't already shared with the shared user
+            if course not in shared_user.profile.shared_courses.all():
+                # Add the course to the collection of shared courses of the shared user
+                shared_user.profile.shared_courses.add(course)
+
+                # Then save the changes
+                shared_user.save()
+
+            # Return an OK response
+            return Response("OK")
+
+        except User.DoesNotExist:
+            # Raise an exception if the user doesn't exist
+            raise Http404("ERROR: shared user not found!")
+
     def perform_create(self, serializer):
         """
         Called when a Course object is being created
@@ -411,8 +510,8 @@ class CourseViewSet(viewsets.ModelViewSet):
         # If a parent_course is specified, check if the user is authorized to edit it
         if course.parent_course is not None:
             # If not authorized, throw an exception
-            if not Course.objects.filter(pk=course.parent_course.id)\
-                         .filter(authorized_users__in=[self.request.user]).exists():
+            if not Course.objects.filter(pk=course.parent_course.id) \
+                    .filter(authorized_users__in=[self.request.user]).exists():
                 raise PermissionDenied("ERROR: You can't set a parent course that you can't edit")
 
         # Save the course and add the current user to the authorized group
@@ -441,6 +540,7 @@ class UserDump(APIView):
     """
     This API is used to retrive all the profile, courses and recordings information for the current user
     """
+
     def get(self, request, format=None):
         # Get all the recordings for the current user
         recordings = Recording.objects.filter(user=request.user)
@@ -451,8 +551,23 @@ class UserDump(APIView):
         # Get all the user related teachers
         teachers = Teacher.objects.filter(course__authorized_users__in=[request.user]).distinct()
 
+        # Get all the shared courses of the user, but not the private ones
+        # Note: the check of the privacy status is necessary because if a user shares
+        #       a course and then makes it private again, the shared user
+        #       shouldn't be able to view it.
+        shared_courses = Course.objects.filter(id__in=request.user.profile.shared_courses.values('id'))\
+                                       .filter(privacy__gt=0)
+
+        # Get all the shared recordings of the user, but not the private ones
+        # Note: the check of the privacy status is necessary because if a user shares
+        #       a recording and then makes it private again, the shared user
+        #       shouldn't be able to view it.
+        shared_recordings = Recording.objects.filter(id__in=request.user.profile.shared_recordings.values('id')) \
+                                          .filter(privacy__gt=0)
+
         # Serialize all the UserDump
         serializer = UserDumpSerializer({'recordings': recordings, 'user': request.user,
-                                         'courses': courses, 'teachers': teachers})
+                                         'courses': courses, 'teachers': teachers,
+                                         'shared_courses': shared_courses, 'shared_recordings': shared_recordings})
 
         return Response(serializer.data)
