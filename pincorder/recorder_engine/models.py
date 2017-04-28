@@ -53,6 +53,21 @@ class Teacher(models.Model):
         ordering = ['name']
 
 
+class CourseManager(models.Manager):
+    """
+    Custom Manager for the Course model
+    """
+    def get_shared_courses_for_user(self, user):
+        # Get all the shared courses of the user, but not the private ones
+        # Note: the check of the privacy status is necessary because if a user shares
+        #       a course and then makes it private again, the shared user
+        #       shouldn't be able to view it.
+        shared_courses = self.get_queryset().filter(id__in=user.profile.shared_courses.values('id')) \
+                                            .filter(privacy__gt=0)
+
+        return shared_courses
+
+
 class Course(models.Model):
     """
     Model used to represent a Course
@@ -72,6 +87,12 @@ class Course(models.Model):
     # Represents the privacy level of the course
     # 0 is private, 1 is shared and 2 is public
     privacy = models.IntegerField(default=0)
+
+    # Add the default manager
+    objects = models.Manager()
+
+    # Add the CourseManager
+    custom = CourseManager()
 
     def __str__(self):
         return self.name
@@ -103,13 +124,13 @@ class RecordingManager(models.Manager):
             # Return the Recordings queryset
             return user_recordings
 
-    def get_shared_recordings(self, user):
-        # Get all the shared courses of the user, but not the private ones
-        # Note: the check of the privacy status is necessary because if a user shares
-        #       a course and then makes it private again, the shared user
-        #       shouldn't be able to view it.
-        shared_courses = Course.objects.filter(id__in=user.profile.shared_courses.values('id')) \
-            .filter(privacy__gt=0)
+    def get_shared_recordings(self, user, shared_courses=None):
+        # For efficiency purposes, if you already calculated the shared_courses queryset,
+        # you can pass it, in this way the query isn't repeated.
+        # If the shared course queryset is not passed, make the query
+        if shared_courses is None:
+            # Get all the shared courses of the user
+            shared_courses = Course.custom.get_shared_courses_for_user(user)
 
         # Get all the shared recordings of the user, but not the private ones
         # Shared recordings are the union of recordings that are directly shared
@@ -119,11 +140,11 @@ class RecordingManager(models.Manager):
         #       shouldn't be able to view it.
 
         # Get the recordings shared directly with the user
-        shared_recordings_only = Recording.objects.filter(id__in=user.profile.shared_recordings.values('id')) \
-            .filter(privacy__gt=0)
+        shared_recordings_only = self.get_queryset().filter(id__in=user.profile.shared_recordings.values('id')) \
+                                                    .filter(privacy__gt=0)
 
         # Get the recordings belonging to a shared course
-        shared_recordings_from_courses = Recording.objects.filter(course__id__in=shared_courses.values('id'))
+        shared_recordings_from_courses = self.get_queryset().filter(course__id__in=shared_courses.values('id'))
 
         # Union of the two sources of recordings
         shared_recordings = (shared_recordings_only | shared_recordings_from_courses)
