@@ -3,6 +3,7 @@ import os, uuid
 from django.contrib.auth.models import User
 from django.db import models
 from django.conf import settings
+from django.http import Http404
 from django.utils.timezone import now
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
@@ -57,7 +58,21 @@ class CourseManager(models.Manager):
     """
     Custom Manager for the Course model
     """
+    def get_courses_for_user(self, user):
+        """
+        Return the courses that the passed user is author of.
+        """
+        return self.get_queryset().filter(authorized_users__in=[user])
+
     def get_shared_courses_for_user(self, user):
+        """
+        Return a queryset that include all the shared courses of the user, 
+        but not the private ones.
+        
+        Note: the check of the privacy status is necessary because if a user shares
+              a course and then makes it private again, the shared user
+              shouldn't be able to view it. 
+        """
         # Get all the shared courses of the user, but not the private ones
         # Note: the check of the privacy status is necessary because if a user shares
         #       a course and then makes it private again, the shared user
@@ -66,6 +81,25 @@ class CourseManager(models.Manager):
                                             .filter(privacy__gt=0)
 
         return shared_courses
+
+    def check_user_is_author_of_course_id(self, user, course_id, throw_404=False):
+        """
+        Check if the passed user is the author of the course having the passed id.
+        If throw_404=True, instead of returning False, it raise an Http404 Exception.
+        """
+        # True if the course exists and the user is the author, False otherwise
+        result = self.get_queryset().filter(id=course_id)\
+                                    .filter(authorized_users__in=[user]).exists()
+
+        # If the result is True, return True
+        if result:
+            return True
+        else:
+            # If throw_404 is True, throw an Http404 exception. Return False otherwise.
+            if throw_404:
+                raise Http404("ERROR: Course doesn't exists or you're not authorized!")
+            else:
+                return False
 
 
 class Course(models.Model):
@@ -107,6 +141,10 @@ class RecordingManager(models.Manager):
     Custom manager for the Recording Model
     """
     def get_recordings_for_user(self, user, include_shared=False):
+        """
+        Return a queryset of the recordings belonging to the specified user
+        If include_shared=True, also include the recordings shared with the user 
+        """
         # Get the recordings belonging to the user
         user_recordings = self.get_queryset().filter(user=user)
 
@@ -125,6 +163,11 @@ class RecordingManager(models.Manager):
             return user_recordings
 
     def get_shared_recordings(self, user, shared_courses=None):
+        """
+        Return a queryset containing the recordings shared with the specified user.
+        If shared_courses is passed, instead of making a new query, it uses the
+        passed queryset ( Used for efficiency purposes ).
+        """
         # For efficiency purposes, if you already calculated the shared_courses queryset,
         # you can pass it, in this way the query isn't repeated.
         # If the shared course queryset is not passed, make the query
@@ -151,6 +194,25 @@ class RecordingManager(models.Manager):
 
         # Return the shared recordings
         return shared_recordings
+
+    def check_user_is_author_of_recording_id(self, user, recording_id, throw_404=False):
+        """
+        Check if the passed user is the author of the recording having the passed id.
+        If throw_404=True, instead of returning False, it raise an Http404 Exception.
+        """
+        # True if the recording exists and the user is the author, False otherwise
+        result = self.get_queryset().filter(id=recording_id)\
+                                    .filter(user=user).exists()
+
+        # If the result is True, return True
+        if result:
+            return True
+        else:
+            # If throw_404 is True, throw an Http404 exception. Return False otherwise.
+            if throw_404:
+                raise Http404("ERROR: You can't access this recording or it doesn't exists")
+            else:
+                return False
 
 
 class Recording(models.Model):
@@ -188,6 +250,12 @@ class Recording(models.Model):
 
     # Add the RecordingManager
     custom = RecordingManager()
+
+    def is_author(self, user):
+        """
+        Check if the passed user is the author of the recording
+        """
+        return self.user.id == user.id
 
     def __str__(self):
         return self.name
