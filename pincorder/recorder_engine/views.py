@@ -24,7 +24,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # Return the recordings of the current user
-        return Recording.objects.filter(user=self.request.user)
+        return Recording.custom.get_recordings_for_user(self.request.user)
 
     @list_route(methods=['get'])
     def search_by_name(self, request):

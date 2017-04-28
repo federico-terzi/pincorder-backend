@@ -81,6 +81,57 @@ class Course(models.Model):
         ordering = ['id']
 
 
+class RecordingManager(models.Manager):
+    """
+    Custom manager for the Recording Model
+    """
+    def get_recordings_for_user(self, user, include_shared=False):
+        # Get the recordings belonging to the user
+        user_recordings = self.get_queryset().filter(user=user)
+
+        # Check if shared recording should be included
+        if include_shared:
+            # Get the shared recordings for the user
+            shared_recordings = self.get_shared_recordings(user)
+
+            # Union of the user_recordings and shared_recordings
+            recordings = user_recordings | shared_recordings
+
+            # Return the Recordings queryset
+            return recordings
+        else:
+            # Return the Recordings queryset
+            return user_recordings
+
+    def get_shared_recordings(self, user):
+        # Get all the shared courses of the user, but not the private ones
+        # Note: the check of the privacy status is necessary because if a user shares
+        #       a course and then makes it private again, the shared user
+        #       shouldn't be able to view it.
+        shared_courses = Course.objects.filter(id__in=user.profile.shared_courses.values('id')) \
+            .filter(privacy__gt=0)
+
+        # Get all the shared recordings of the user, but not the private ones
+        # Shared recordings are the union of recordings that are directly shared
+        # or recordings belonging to a shared course
+        # Note: the check of the privacy status is necessary because if a user shares
+        #       a recording and then makes it private again, the shared user
+        #       shouldn't be able to view it.
+
+        # Get the recordings shared directly with the user
+        shared_recordings_only = Recording.objects.filter(id__in=user.profile.shared_recordings.values('id')) \
+            .filter(privacy__gt=0)
+
+        # Get the recordings belonging to a shared course
+        shared_recordings_from_courses = Recording.objects.filter(course__id__in=shared_courses.values('id'))
+
+        # Union of the two sources of recordings
+        shared_recordings = (shared_recordings_only | shared_recordings_from_courses)
+
+        # Return the shared recordings
+        return shared_recordings
+
+
 class Recording(models.Model):
     """
     Model used to represent a Recording
@@ -110,6 +161,12 @@ class Recording(models.Model):
     # Represents the privacy level of the recording
     # 0 is private, 1 is shared and 2 is public
     privacy = models.IntegerField(default=0)
+
+    # Add the default Manager
+    objects = models.Manager()
+
+    # Add the RecordingManager
+    custom = RecordingManager()
 
     def __str__(self):
         return self.name
