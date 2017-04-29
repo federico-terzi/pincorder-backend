@@ -117,16 +117,16 @@ class UserDumpTest(APITestCase):
         client = self.get_logged_client()
         response = client.get('/api/user_dump/')
 
-        self.assertEqual(len(response.data['recordings'][0]['pin_set']), 3)
+        self.assertEqual(len(response.data['pins'][0]['batch']), 3)
         self.assertDictContainsSubset({'time': 10,
-                                       'text': 'Explanation 1'}, response.data['recordings'][0]['pin_set'][0])
+                                       'text': 'Explanation 1'}, response.data['pins'][0]['batch'][0])
         self.assertDictContainsSubset({'time': 50,
-                                       }, response.data['recordings'][0]['pin_set'][1])
+                                       }, response.data['pins'][0]['batch'][1])
         self.assertDictContainsSubset({'time': 100,
-                                       'text': 'Explanation 2'}, response.data['recordings'][0]['pin_set'][2])
+                                       'text': 'Explanation 2'}, response.data['pins'][0]['batch'][2])
 
     def test_userdump_recording_should_not_contain_pins(self):
         client = self.get_logged_client()
         response = client.get('/api/user_dump/')
 
-        self.assertEqual(len(response.data['recordings'][1]['pin_set']), 0)
+        self.assertEqual(len(response.data['pins'][1]['batch']), 0)

@@ -202,13 +202,19 @@ class RecordingManager(models.Manager):
     """
     Custom manager for the Recording Model
     """
-    def get_recordings_for_user(self, user, include_shared=False):
+    def get_recordings_for_user(self, user, include_shared=False, prefetch_related=False):
         """
-        Return a queryset of the recordings belonging to the specified user
-        If include_shared=True, also include the recordings shared with the user 
+        Return a queryset of the recordings belonging to the specified user.
+        If include_shared=True, also include the recordings shared with the user.
+        If pin_set is accessed, specify prefetch_related=True to increase efficiency.
         """
         # Get the recordings belonging to the user
         user_recordings = self.get_queryset().filter(user=user)
+
+        # If prefetch_related=True, avoid lazy loading of pins.
+        if prefetch_related:
+            # Prefetch all the pins
+            user_recordings = user_recordings.prefetch_related('pin_set')
 
         # Check if shared recording should be included
         if include_shared:

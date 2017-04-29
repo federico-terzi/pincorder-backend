@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import QuerySet
 from django.http import Http404
 from rest_framework import viewsets
 from rest_framework.decorators import list_route, detail_route, parser_classes
@@ -517,7 +518,20 @@ class UserDump(APIView):
 
     def get(self, request, format=None):
         # Get all the recordings for the current user
-        recordings = Recording.objects.filter(user=request.user)
+        recordings = Recording.custom.get_recordings_for_user(request.user, prefetch_related=True)
+
+        # Calculate all the pins
+        # Initialize the pin list
+        pins = []
+
+        # Cycle through all recordings
+        for recording in recordings:
+            # Current pin_batch contain the recording id and the batch list
+            current_pin_batch = {'recording': recording,
+                                 'batch': recording.pin_set.all()}
+
+            # Add the current batch to the list
+            pins.append(current_pin_batch)
 
         # Get all the courses that user is authorized to view
         courses = Course.custom.get_courses_for_user(user=request.user)
@@ -535,6 +549,7 @@ class UserDump(APIView):
         # Serialize all the UserDump
         serializer = UserDumpSerializer({'recordings': recordings, 'user': request.user,
                                          'courses': courses, 'teachers': teachers,
-                                         'shared_courses': shared_courses, 'shared_recordings': shared_recordings})
+                                         'pins': pins, 'shared_courses': shared_courses,
+                                         'shared_recordings': shared_recordings})
 
         return Response(serializer.data)
