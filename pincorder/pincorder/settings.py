@@ -41,6 +41,7 @@ INTERNAL_IPS = ['127.0.0.1']
 
 INSTALLED_APPS = [
     'recorder_engine',
+    'pincorder_crawlers',
     'rest_framework',
     'oauth2_provider',
     'social_django',
