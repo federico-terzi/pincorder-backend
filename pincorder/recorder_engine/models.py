@@ -22,6 +22,25 @@ def unique_name_generator(instance, filename):
 
 # Models
 
+class ProfileManager(models.Manager):
+    """
+    Custom manager for the profile model, connected to the user
+    """
+    def add_course_to_users_that_have_shared_parent_course(self, course):
+        """
+        Add the passed course to all the users that have the parent_course shared.
+        """
+        # Get all the profiles with the shared parent_course
+        profiles = self.get_queryset().filter(shared_courses__in=[course.parent_course])
+
+        # Add to all the users the passed course
+        for profile in profiles:
+            # Add the passed course to the shared_courses of the user
+            profile.shared_courses.add(course)
+            # Save the changes
+            profile.save()
+
+
 class Profile(models.Model):
     """
     Model connected to a user and represents the user profile data
@@ -37,6 +56,12 @@ class Profile(models.Model):
 
     # Shared courses with the user
     shared_courses = models.ManyToManyField('Course', blank=True)
+
+    # Add the default manager
+    objects = models.Manager()
+
+    # Add the ProfileManager
+    custom = ProfileManager()
 
     def __str__(self):
         return self.user.username
@@ -103,20 +128,6 @@ class CourseManager(models.Manager):
                 raise Http404("ERROR: Course doesn't exists or you're not authorized!")
             else:
                 return False
-
-    def add_course_to_users_that_have_shared_parent_course(self, course):
-        """
-        Add the passed course to all the users that have the parent_course shared.
-        """
-        # Get all the profiles with the shared parent_course
-        profiles = Profile.objects.filter(shared_courses__in=[course.parent_course])
-
-        # Add to all the users the passed course
-        for profile in profiles:
-            # Add the passed course to the shared_courses of the user
-            profile.shared_courses.add(course)
-            # Save the changes
-            profile.save()
 
 
 class Course(models.Model):
@@ -439,6 +450,6 @@ def save_course_with_shared_parent_add_to_all_shared_users(sender, instance, cre
         # Check if the parent_course is shared
         if privacy > 0:
             # Add the course to all the users that have the parent_course shared.
-            Course.custom.add_course_to_users_that_have_shared_parent_course(instance)
+            Profile.custom.add_course_to_users_that_have_shared_parent_course(instance)
 
 
