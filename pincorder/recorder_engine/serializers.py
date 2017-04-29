@@ -120,17 +120,33 @@ class UserDumpPinSerializer(serializers.ModelSerializer):
         fields = ('time', 'text', 'media_url')
 
 
+class UserDumpPinBatchSerializer(serializers.Serializer):
+    """
+    Serializer used to display Pin Batches data in the UserDump
+    """
+    # Primary Key of the recording pins belong to
+    recording = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    # List of all recording pins
+    batch = UserDumpPinSerializer(many=True)
+
+    # This serializer is readonly, bypass this method
+    def update(self, instance, validated_data):
+        pass
+
+    # This serializer is readonly, bypass this method
+    def create(self, validated_data):
+        pass
+
+
 class UserDumpRecordingSerializer(serializers.ModelSerializer):
     """
     Serializer used to display Recording data in the UserDump
     """
 
-    # Uncomment if you want full information of the course in the recording
-    pin_set = UserDumpPinSerializer(many=True)
-
     class Meta:
         model = Recording
-        fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'pin_set', 'privacy')
+        fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'privacy')
 
 
 class UserDumpSerializer(serializers.Serializer):
@@ -142,6 +158,7 @@ class UserDumpSerializer(serializers.Serializer):
     teachers = UserDumpTeacherSerializer(many=True)
     courses = UserDumpCourseSerializer(many=True)
     recordings = UserDumpRecordingSerializer(many=True)
+    pins = UserDumpPinBatchSerializer(many=True)
     shared_courses = UserDumpCourseSerializer(many=True)
     shared_recordings = UserDumpRecordingSerializer(many=True)
 
