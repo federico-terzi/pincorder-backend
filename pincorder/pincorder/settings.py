@@ -33,6 +33,9 @@ PINCORDER_DOMAIN = 'pincorder.freddytstudio.com'
 
 ALLOWED_HOSTS = [PINCORDER_DOMAIN, 'localhost']
 
+# IPs authorized by the django toolbar
+INTERNAL_IPS = ['127.0.0.1']
+
 
 # Application definition
 
@@ -48,9 +51,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'debug_toolbar',
 ]
 
 MIDDLEWARE = [
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
