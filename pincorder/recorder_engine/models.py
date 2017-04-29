@@ -38,6 +38,9 @@ class Profile(models.Model):
     # Shared courses with the user
     shared_courses = models.ManyToManyField('Course', blank=True)
 
+    def __str__(self):
+        return self.user.username
+
 
 class Teacher(models.Model):
     """
@@ -101,6 +104,20 @@ class CourseManager(models.Manager):
             else:
                 return False
 
+    def add_course_to_users_that_have_shared_parent_course(self, course):
+        """
+        Add the passed course to all the users that have the parent_course shared.
+        """
+        # Get all the profiles with the shared parent_course
+        profiles = Profile.objects.filter(shared_courses__in=[course.parent_course])
+
+        # Add to all the users the passed course
+        for profile in profiles:
+            # Add the passed course to the shared_courses of the user
+            profile.shared_courses.add(course)
+            # Save the changes
+            profile.save()
+
 
 class Course(models.Model):
     """
@@ -145,17 +162,36 @@ class Course(models.Model):
         # Save the course
         self.save()
 
-        # If the course wasn't already shared with the shared user
-        if self not in user.profile.shared_courses.all():
-            # Add the course to the collection of shared courses of the shared user
-            user.profile.shared_courses.add(self)
+        # Add the course to the collection of shared courses of the shared user
+        user.profile.shared_courses.add(self)
 
-            # Then save the changes
-            user.save()
+        # Then save the changes
+        user.save()
 
         # Share all the subcourses
         for course in self.children.all():
             course.share_with_user(user)
+
+    def save(self, *args, **kwargs):
+        """
+        Override default save method for the course model
+        """
+        # Check if a parent_course is present
+        if self.parent_course is not None:
+            # Get the privacy level of the parent course
+            privacy = self.parent_course.privacy
+
+            # If the parent course is not private, but this course is private,
+            # make this course the same privacy level than the parent
+            # NOTE: This have some consequences:
+            # 1 - A course CANNOT be private if the parent is shared
+            # 2 - A course CAN be public if the parent is shared or private
+            if privacy > 0 and self.privacy == 0:
+                # Make the privacy level the same as the parent
+                self.privacy = privacy
+
+        # Call the default save method
+        super(Course, self).save(*args, **kwargs)
 
     class Meta:
         # Courses will be ordered in ascending order by the ID
@@ -379,3 +415,24 @@ def save_user_profile(sender, instance, **kwargs):
     When a user is updated, save the profile
     """
     instance.profile.save()
+
+# Signals used to manage the shared courses
+
+
+@receiver(post_save, sender=Course)
+def save_course_with_shared_parent_add_to_all_shared_users(sender, instance, created, **kwargs):
+    """
+    When a course is created or updated and has a shared parent course
+    it becomes shared as well.
+    """
+    # Check if the course has a parent_course
+    if instance.parent_course is not None:
+        # Get the privacy of the parent_course
+        privacy = instance.parent_course.privacy
+
+        # Check if the parent_course is shared
+        if privacy > 0:
+            # Add the course to all the users that have the parent_course shared.
+            Course.custom.add_course_to_users_that_have_shared_parent_course(instance)
+
+
