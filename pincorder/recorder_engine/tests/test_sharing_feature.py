@@ -14,6 +14,7 @@ class SharingTest(APITestCase):
     def setUp(self):
         self.currentUser = User.objects.create(username="testuser")
         self.currentUser2 = User.objects.create(username="testuser2")
+        self.currentUser3 = User.objects.create(username="testuser3")
 
         self.t1 = Teacher.objects.create(name="Anna Rossi")
         self.course1 = Course.objects.create(name="Operative System", teacher=self.t1)
@@ -52,6 +53,15 @@ class SharingTest(APITestCase):
         self.t4 = Teacher.objects.create(name="Domenico Verdi")
         self.course4 = Course.objects.create(name="Physics", teacher=self.t4)
         self.course4.authorized_users.add(self.currentUser2)
+
+        self.course5 = Course.objects.create(name="Parent Course")
+        self.course5.authorized_users.add(self.currentUser)
+
+        self.subCourse1 = Course.objects.create(name="Subcourse", parent_course=self.course5)
+        self.subCourse1.authorized_users.add(self.currentUser)
+
+        self.subSubCourse1 = Course.objects.create(name="SubSub course", parent_course=self.subCourse1)
+        self.subSubCourse1.authorized_users.add(self.currentUser)
 
     def get_logged_client(self, user=None):
         if user is None:
@@ -225,6 +235,57 @@ class SharingTest(APITestCase):
         self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 1)
         self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.first().id, self.course1.id)
         self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 1)
+
+    def test_share_course_also_span_to_children(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 0)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 0)
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 0)
+
+        self.course5.share_with_user(self.currentUser3)
+
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 3)
+        self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subSubCourse1.id).privacy, 1)
+
+    def test_share_course_api_also_span_to_children(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 0)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 0)
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 0)
+
+        response = client.post('/api/courses/' + str(self.course5.id) + '/share_course_with_user/',
+                               {'shared_user': self.currentUser3.id})
+
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 3)
+        self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subSubCourse1.id).privacy, 1)
+
+    def test_delete_course_should_be_deleted_also_from_user_shared_courses(self):
+        client = self.get_logged_client()
+
+        self.course2.share_with_user(self.currentUser2)
+
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 1)
+
+        self.course2.delete()
+
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 0)
+
+    def test_delete_course_should_sub_course_be_deleted_also_from_user_shared_courses(self):
+        client = self.get_logged_client()
+
+        self.course5.share_with_user(self.currentUser2)
+
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 3)
+
+        self.course5.delete()
+
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 0)
 
     # Userdump tests
 

@@ -112,8 +112,9 @@ class Course(models.Model):
     # The teacher of the course. Can be null
     teacher = models.ForeignKey('Teacher', blank=True, null=True)
 
-    # The parent course of the current course. Can be null
-    parent_course = models.ForeignKey('Course', blank=True, null=True)
+    # The parent course of the current course. Can be null.
+    # To get all the children of a course use Course.children.all()
+    parent_course = models.ForeignKey('self', blank=True, null=True, related_name='children')
 
     # Users that are authorized to view the course
     authorized_users = models.ManyToManyField('auth.user')
@@ -130,6 +131,31 @@ class Course(models.Model):
 
     def __str__(self):
         return self.name
+
+    def share_with_user(self, user):
+        """
+        Share the current course with the passed user
+        """
+        # If the course is private ( privacy = 0 ), make the course shared ( privacy = 1 )
+        # Note: if the course is already shared, or is public, this doesn't modify it
+        if self.privacy == 0:
+            # Change the course privacy to shared
+            self.privacy = 1
+
+        # Save the course
+        self.save()
+
+        # If the course wasn't already shared with the shared user
+        if self not in user.profile.shared_courses.all():
+            # Add the course to the collection of shared courses of the shared user
+            user.profile.shared_courses.add(self)
+
+            # Then save the changes
+            user.save()
+
+        # Share all the subcourses
+        for course in self.children.all():
+            course.share_with_user(user)
 
     class Meta:
         # Courses will be ordered in ascending order by the ID

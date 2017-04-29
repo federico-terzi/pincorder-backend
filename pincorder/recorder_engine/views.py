@@ -466,22 +466,8 @@ class CourseViewSet(viewsets.ModelViewSet):
             # Get the current course
             course = Course.objects.get(pk=pk)
 
-            # If the course is private ( privacy = 0 ), make the course shared ( privacy = 1 )
-            # Note: if the course is already shared, or is public, this doesn't modify it
-            if course.privacy == 0:
-                # Change the course privacy to shared
-                course.privacy = 1
-
-            # Save the course
-            course.save()
-
-            # If the course wasn't already shared with the shared user
-            if course not in shared_user.profile.shared_courses.all():
-                # Add the course to the collection of shared courses of the shared user
-                shared_user.profile.shared_courses.add(course)
-
-                # Then save the changes
-                shared_user.save()
+            # Share the course with the shared_user
+            course.share_with_user(shared_user)
 
             # Return an OK response
             return Response("OK")
