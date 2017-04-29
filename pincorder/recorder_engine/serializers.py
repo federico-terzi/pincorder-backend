@@ -27,9 +27,15 @@ class CourseSerializer(serializers.ModelSerializer):
     """
     teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all(), required=False)
 
+    def get_course(self):
+        """
+        Return a Course object with the validated data, without saving it
+        """
+        return Course(**self.validated_data)
+
     class Meta:
         model = Course
-        fields = ('id', 'name', 'teacher', 'parent_course')
+        fields = ('id', 'name', 'teacher', 'parent_course', 'privacy')
 
 
 class PinSerializer(serializers.ModelSerializer):
@@ -54,7 +60,7 @@ class RecordingSerializer(serializers.ModelSerializer):
     """
     Serializer used to manage recordings
     """
-    user = serializers.StringRelatedField()
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def get_recording(self):
         """
@@ -64,8 +70,9 @@ class RecordingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recording
-        fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'user')
+        fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'user', 'privacy')
         read_only_fields = ('id', 'status', 'is_online', 'is_converted', 'user')
+
 
 """
 The UserDump* classes are used in the UserDumpAPI, where all the information
@@ -77,6 +84,7 @@ class UserDumpUserSerializer(serializers.ModelSerializer):
     """
     Serializer used to display User data in the UserDump
     """
+
     class Meta:
         model = User
         fields = ('id', 'username', 'first_name', 'last_name', 'email')
@@ -86,6 +94,7 @@ class UserDumpTeacherSerializer(serializers.ModelSerializer):
     """
     Serializer used to display Teacher data in the UserDump
     """
+
     class Meta:
         model = Teacher
         fields = ('id', 'name')
@@ -95,29 +104,39 @@ class UserDumpCourseSerializer(serializers.ModelSerializer):
     """
     Serializer used to display Course data in the UserDump
     """
-    teacher = UserDumpTeacherSerializer()
 
     class Meta:
         model = Course
-        fields = ('id', 'name', 'teacher', 'parent_course')
-
-
-class UserDumpCourseOnlyIdSerializer(serializers.ModelSerializer):
-    """
-    Serializer used to display the Course id in the UserDump
-    """
-    class Meta:
-        model = Course
-        fields = ('id',)
+        fields = ('id', 'name', 'teacher', 'parent_course', 'privacy')
 
 
 class UserDumpPinSerializer(serializers.ModelSerializer):
     """
     Serializer used to display Pin data in the UserDump
     """
+
     class Meta:
         model = Pin
         fields = ('time', 'text', 'media_url')
+
+
+class UserDumpPinBatchSerializer(serializers.Serializer):
+    """
+    Serializer used to display Pin Batches data in the UserDump
+    """
+    # Primary Key of the recording pins belong to
+    recording = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    # List of all recording pins
+    batch = UserDumpPinSerializer(many=True)
+
+    # This serializer is readonly, bypass this method
+    def update(self, instance, validated_data):
+        pass
+
+    # This serializer is readonly, bypass this method
+    def create(self, validated_data):
+        pass
 
 
 class UserDumpRecordingSerializer(serializers.ModelSerializer):
@@ -125,14 +144,9 @@ class UserDumpRecordingSerializer(serializers.ModelSerializer):
     Serializer used to display Recording data in the UserDump
     """
 
-    # Uncomment if you want full information of the course in the recording
-    # course = UserDumpCourseSerializer()
-    course = UserDumpCourseOnlyIdSerializer()
-    pin_set = UserDumpPinSerializer(many=True)
-
     class Meta:
         model = Recording
-        fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'pin_set')
+        fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'privacy')
 
 
 class UserDumpSerializer(serializers.Serializer):
@@ -141,8 +155,12 @@ class UserDumpSerializer(serializers.Serializer):
     """
 
     user = UserDumpUserSerializer()
+    teachers = UserDumpTeacherSerializer(many=True)
     courses = UserDumpCourseSerializer(many=True)
     recordings = UserDumpRecordingSerializer(many=True)
+    pins = UserDumpPinBatchSerializer(many=True)
+    shared_courses = UserDumpCourseSerializer(many=True)
+    shared_recordings = UserDumpRecordingSerializer(many=True)
 
     # The UserDump is read only, so no creation is allowed
     def create(self, validated_data):

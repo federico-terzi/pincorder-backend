@@ -25,6 +25,7 @@ class RecordingTest(APITestCase):
         course2 = Course.objects.create(name="Telecom", teacher=teacher2)
         course2.authorized_users.add(self.currentUser)
         course2.authorized_users.add(self.currentUser2)
+        self.course2 = course2
 
         # Add course, but don't authorize the testuser
         teacher3 = Teacher.objects.create(name="Paola Gialli")
@@ -85,11 +86,11 @@ class RecordingTest(APITestCase):
         response = client.get('/api/recordings/'+str(self.r1.id)+'/')
 
         self.assertDictContainsSubset({'name': 'First Registration', 'status': 'SUBMITTED', 'is_online': False,
-                                       'is_converted': False, 'course': self.course1.id}, response.data)
+                                       'is_converted': False, 'course': self.course1.id, 'privacy': 0}, response.data)
 
     def test_recording_should_not_exist(self):
         client = self.get_logged_client()
-        response = client.get('/api/recordings/1000/')
+        response = client.get('/api/recordings/10000/')
 
         self.assertEqual(response.status_code, 404)
 
@@ -136,6 +137,26 @@ class RecordingTest(APITestCase):
 
         self.assertEqual(recording.name, 'New Name')
 
+    def test_make_recording_shared(self):
+        client = self.get_logged_client()
+        recording = Recording.objects.first()
+        self.assertEqual(recording.privacy, 0)
+
+        response = client.patch('/api/recordings/' + str(self.r1.id) + '/', {'privacy': 1})
+
+        recording = Recording.objects.first()
+        self.assertEqual(recording.privacy, 1)
+
+    def test_make_recording_public(self):
+        client = self.get_logged_client()
+        recording = Recording.objects.first()
+        self.assertEqual(recording.privacy, 0)
+
+        response = client.patch('/api/recordings/' + str(self.r1.id) + '/', {'privacy': 2})
+
+        recording = Recording.objects.first()
+        self.assertEqual(recording.privacy, 2)
+
     def test_edit_recording_with_course_null(self):
         client = self.get_logged_client()
 
@@ -155,6 +176,24 @@ class RecordingTest(APITestCase):
 
         self.assertNotEqual(recording.name, 'New Name')
 
+    def test_move_recording(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Recording.objects.get(id=self.r1.id).course.id, self.course1.id)
+
+        response = client.patch('/api/recordings/'+str(self.r1.id)+'/', {'course': self.course2.id})
+
+        self.assertEqual(Recording.objects.get(id=self.r1.id).course.id, self.course2.id)
+
+    def test_move_recording_should_fail_unauthorized_course(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Recording.objects.get(id=self.r1.id).course.id, self.course1.id)
+
+        response = client.patch('/api/recordings/'+str(self.r1.id)+'/', {'course': self.course3.id})
+
+        self.assertEqual(Recording.objects.get(id=self.r1.id).course.id, self.course1.id)
+
     def test_delete_recording(self):
         client = self.get_logged_client()
         initialCount = Recording.objects.count()
@@ -173,6 +212,16 @@ class RecordingTest(APITestCase):
         response = client.delete('/api/recordings/'+str(self.r1.id)+'/')
 
         self.assertFalse(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
+        self.assertEqual(initialCount, Recording.objects.count()+1)
+
+    def test_delete_recording_check_pins_are_deleted(self):
+        client = self.get_logged_client()
+        initialCount = Recording.objects.count()
+
+        self.assertEqual(Pin.objects.filter(recording__id=self.r1.id).count(), 3)
+        response = client.delete('/api/recordings/'+str(self.r1.id)+'/')
+
+        self.assertEqual(Pin.objects.filter(recording__id=self.r1.id).count(), 0)
         self.assertEqual(initialCount, Recording.objects.count()+1)
 
     def test_delete_unauthorized_recording_should_fail(self):
@@ -234,11 +283,30 @@ class RecordingTest(APITestCase):
         lastPin = Pin.objects.last()
 
         self.assertTrue(lastPin.media_url is not None)
+        self.assertNotEqual(lastPin.media_url.name, '')
         self.assertEqual(lastPin.recording, self.r1)
         self.assertEqual(lastPin.time, 200)
 
         # Deleting file
         os.remove(os.path.join(settings.MEDIA_ROOT, response.data['media_url']))
+
+    def test_add_pin_wrong_media_format_should_fail(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id),
+                               {'time': 200, 'text': 'Test Pin',
+                                'media_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                               format='multipart')
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(self.r4.pin_set.count(), 0)
+
+    def test_edit_pin_wrong_media_format_should_fail(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/{id}/add_pin/'.format(id=self.r1.id),
+                               {'time': 10, 'text': 'Test Pin',
+                                'media_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                               format='multipart')
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(self.r1.pin_set.first().media_url.name, '')
 
     def test_add_pin_to_unauthorized_recording_should_fail(self):
         client = self.get_logged_client()
