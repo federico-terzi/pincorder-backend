@@ -14,6 +14,7 @@ class SharingTest(APITestCase):
     def setUp(self):
         self.currentUser = User.objects.create(username="testuser")
         self.currentUser2 = User.objects.create(username="testuser2")
+        self.currentUser3 = User.objects.create(username="testuser3")
 
         self.t1 = Teacher.objects.create(name="Anna Rossi")
         self.course1 = Course.objects.create(name="Operative System", teacher=self.t1)
@@ -52,6 +53,15 @@ class SharingTest(APITestCase):
         self.t4 = Teacher.objects.create(name="Domenico Verdi")
         self.course4 = Course.objects.create(name="Physics", teacher=self.t4)
         self.course4.authorized_users.add(self.currentUser2)
+
+        self.course5 = Course.objects.create(name="Parent Course")
+        self.course5.authorized_users.add(self.currentUser)
+
+        self.subCourse1 = Course.objects.create(name="Subcourse", parent_course=self.course5)
+        self.subCourse1.authorized_users.add(self.currentUser)
+
+        self.subSubCourse1 = Course.objects.create(name="SubSub course", parent_course=self.subCourse1)
+        self.subSubCourse1.authorized_users.add(self.currentUser)
 
     def get_logged_client(self, user=None):
         if user is None:
@@ -225,6 +235,238 @@ class SharingTest(APITestCase):
         self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 1)
         self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.first().id, self.course1.id)
         self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 1)
+
+    def test_share_course_also_span_to_children(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 0)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 0)
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 0)
+
+        self.course5.share_with_user(self.currentUser3)
+
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 3)
+        self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subSubCourse1.id).privacy, 1)
+
+    def test_share_course_api_also_span_to_children(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 0)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 0)
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 0)
+
+        response = client.post('/api/courses/' + str(self.course5.id) + '/share_course_with_user/',
+                               {'shared_user': self.currentUser3.id})
+
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 3)
+        self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subSubCourse1.id).privacy, 1)
+
+    def test_delete_course_should_be_deleted_also_from_user_shared_courses(self):
+        client = self.get_logged_client()
+
+        self.course2.share_with_user(self.currentUser2)
+
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 1)
+
+        self.course2.delete()
+
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 0)
+
+    def test_delete_course_should_sub_course_be_deleted_also_from_user_shared_courses(self):
+        client = self.get_logged_client()
+
+        self.course5.share_with_user(self.currentUser2)
+
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 3)
+
+        self.course5.delete()
+
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 0)
+
+    def test_create_course_with_shared_parent_also_share_course_to_shared_users(self):
+        client = self.get_logged_client()
+
+        # Share course 5 and all sub courses
+
+        self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 0)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 0)
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 0)
+
+        # Share with user2 and user3
+
+        self.course5.share_with_user(self.currentUser3)
+        self.course5.share_with_user(self.currentUser2)
+
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 3)
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 3)
+        self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subSubCourse1.id).privacy, 1)
+
+        # Add a course with subCourse1 as parent, it should be shared as well
+
+        newCourse = Course.objects.create(name="New Course", parent_course=Course.objects.get(id=self.subCourse1.id))
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 1)
+
+        # Check all users have the new course
+        self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 4)
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 4)
+
+        # But not the not shared ones
+
+        self.assertEqual(User.objects.get(id=self.currentUser.id).profile.shared_courses.count(), 0)
+
+    def test_create_course_can_be_shared_with_private_parent(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 0)
+
+        # Add a course with subCourse1 as parent
+
+        newCourse = Course.objects.create(name="New Course", parent_course=Course.objects.get(id=self.subCourse1.id),
+                                          privacy=1)
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 1)
+
+    def test_create_course_can_be_public_with_private_parent(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 0)
+
+        # Add a course with subCourse1 as parent
+
+        newCourse = Course.objects.create(name="New Course", parent_course=Course.objects.get(id=self.subCourse1.id),
+                                          privacy=2)
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 2)
+
+    def test_create_course_cannot_be_private_with_shared_parent_it_must_be_shared(self):
+        client = self.get_logged_client()
+
+        # Make the parent course shared
+        self.subCourse1.privacy = 1
+        self.subCourse1.save()
+
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 1)
+
+        # Add a course with subCourse1 as parent, it should be shared as well
+
+        newCourse = Course.objects.create(name="New Course", parent_course=Course.objects.get(id=self.subCourse1.id),
+                                          privacy=0)
+
+        # newCourse privacy level is forced to be the same as the parent
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 1)
+
+    def test_create_course_cannot_be_private_with_public_parent_it_must_be_public(self):
+        client = self.get_logged_client()
+
+        # Make the parent course public
+        self.subCourse1.privacy = 2
+        self.subCourse1.save()
+
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 2)
+
+        # Add a course with subCourse1 as parent, it should be shared as well
+
+        newCourse = Course.objects.create(name="New Course", parent_course=Course.objects.get(id=self.subCourse1.id),
+                                          privacy=0)
+
+        # newCourse privacy level is forced to be the same as the parent
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 2)
+
+    def test_moving_private_course_into_shared_parent_becomes_shared_too(self):
+        client = self.get_logged_client()
+
+        # Make the parent course shared
+        self.subCourse1.privacy = 1
+        self.subCourse1.save()
+
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 1)
+
+        # Add a new private course without parent
+        newCourse = Course.objects.create(name="New Course", parent_course=None,
+                                          privacy=0)
+
+        # Should be private
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 0)
+
+        # Move it to subCourse1
+        newCourse.parent_course = self.subCourse1
+        newCourse.save()
+
+        # newCourse privacy level is forced to be the same as the parent
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 1)
+
+    def test_moving_private_course_into_public_parent_becomes_public_too(self):
+        client = self.get_logged_client()
+
+        # Make the parent course public
+        self.subCourse1.privacy = 2
+        self.subCourse1.save()
+
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 2)
+
+        # Add a new private course without parent
+        newCourse = Course.objects.create(name="New Course", parent_course=None,
+                                          privacy=0)
+
+        # Should be private
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 0)
+
+        # Move it to subCourse1
+        newCourse.parent_course = self.subCourse1
+        newCourse.save()
+
+        # newCourse privacy level is forced to be the same as the parent
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 2)
+
+    def test_moving_shared_course_into_private_parent_remain_shared(self):
+        client = self.get_logged_client()
+
+        # Make the parent course private
+        self.subCourse1.privacy = 0
+        self.subCourse1.save()
+
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 0)
+
+        # Add a new shared course without parent
+        newCourse = Course.objects.create(name="New Course", parent_course=None,
+                                          privacy=1)
+
+        # Should be shared
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 1)
+
+        # Move it to subCourse1
+        newCourse.parent_course = self.subCourse1
+        newCourse.save()
+
+        # should be still shared
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 1)
+
+    def test_moving_public_course_into_private_parent_remain_public(self):
+        client = self.get_logged_client()
+
+        # Make the parent course private
+        self.subCourse1.privacy = 0
+        self.subCourse1.save()
+
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 0)
+
+        # Add a new public course without parent
+        newCourse = Course.objects.create(name="New Course", parent_course=None,
+                                          privacy=2)
+
+        # Should be public
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 2)
+
+        # Move it to subCourse1
+        newCourse.parent_course = self.subCourse1
+        newCourse.save()
+
+        # should be still public
+        self.assertEqual(Course.objects.get(id=newCourse.id).privacy, 2)
 
     # Userdump tests
 

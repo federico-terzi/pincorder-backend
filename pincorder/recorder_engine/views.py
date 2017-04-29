@@ -24,7 +24,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # Return the recordings of the current user
-        return Recording.objects.filter(user=self.request.user)
+        return Recording.custom.get_recordings_for_user(self.request.user)
 
     @list_route(methods=['get'])
     def search_by_name(self, request):
@@ -38,7 +38,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # Get the recordings made by the user and having a name that contains the specified param
         recordings = Recording.objects.filter(user=self.request.user) \
-            .filter(name__contains=request.query_params['name'])
+                                      .filter(name__contains=request.query_params['name'])
 
         # Serialize the data
         serializer = RecordingSerializer(recordings, many=True, context={'request': request})
@@ -53,7 +53,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # Fetch the files for the current user and Recording id
         files = RecordingFile.objects.filter(recording__user_id=self.request.user) \
-            .filter(recording__id=pk)
+                                     .filter(recording__id=pk)
 
         # Check if recording has files
         if files.count() == 0:
@@ -83,8 +83,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
         Upload the audio file to a recording
         """
         # Check if the user is the author of the recording, if not throw and exception
-        if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
-            raise Http404("ERROR: You can't access this recording or it doesn't exists")
+        Recording.custom.check_user_is_author_of_recording_id(user=request.user, recording_id=pk, throw_404=True)
 
         # Check if the file already exists
         if RecordingFile.objects.filter(recording_id=pk).exists():
@@ -136,10 +135,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
         """
         Add or Update a Pin
         """
-
         # Check if the user is the author of the recording, if not throw and exception
-        if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
-            raise Http404("ERROR: You can't access this recording or it doesn't exists")
+        Recording.custom.check_user_is_author_of_recording_id(user=request.user, recording_id=pk, throw_404=True)
 
         # Get the pins of the current recording
         pins = Recording.objects.get(pk=pk).pin_set
@@ -215,8 +212,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
         Delete a Pin
         """
         # Check if the user is the author of the recording, if not throw and exception
-        if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
-            raise Http404("ERROR: You can't access this recording or it doesn't exists")
+        Recording.custom.check_user_is_author_of_recording_id(user=request.user, recording_id=pk, throw_404=True)
 
         # Check if the pin exists in the specified time
         try:
@@ -237,10 +233,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
         """
         Add Multiple Pins at once
         """
-
         # Check if the user is the author of the recording, if not throw and exception
-        if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
-            raise Http404("ERROR: You can't access this recording or it doesn't exists")
+        Recording.custom.check_user_is_author_of_recording_id(user=request.user, recording_id=pk, throw_404=True)
 
         # Make sure that the user passes the 'batch' POST parameter, if not, raise an exception
         if 'batch' not in self.request.data:
@@ -285,10 +279,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
         """
         Share a recording with the specified user
         """
-
         # Check if the user is the author of the recording, if not throw and exception
-        if not Recording.objects.filter(id=pk).filter(user=self.request.user).exists():
-            raise Http404("ERROR: You can't access this recording or it doesn't exists")
+        Recording.custom.check_user_is_author_of_recording_id(user=request.user, recording_id=pk, throw_404=True)
 
         # Make sure that the user passes the 'shared_user' POST parameter, if not, raise an exception
         if 'shared_user' not in self.request.data:
@@ -377,7 +369,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         """
 
         # Return the courses that the current user is authorized to view
-        return Course.objects.filter(authorized_users__in=[self.request.user])
+        return Course.custom.get_courses_for_user(self.request.user)
 
     @list_route(methods=['post'])
     def add_course_with_teacher(self, request):
@@ -425,8 +417,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         Can be used to modify an existing course teacher.
         """
         # Check that the user is authorized to edit the course, if not raise an exception
-        if not (Course.objects.filter(id=pk).filter(authorized_users__in=[self.request.user]).exists()):
-            raise Http404("ERROR: Course doesn't exists or you're not authorized!")
+        Course.custom.check_user_is_author_of_course_id(request.user, pk, throw_404=True)
 
         # Check if the request contains the 'teacher' parameter
         if 'teacher' not in request.data:
@@ -458,8 +449,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         """
 
         # Check that the user is authorized to edit the course, if not raise an exception
-        if not (Course.objects.filter(id=pk).filter(authorized_users__in=[self.request.user]).exists()):
-            raise Http404("ERROR: Course doesn't exists or you're not authorized!")
+        Course.custom.check_user_is_author_of_course_id(request.user, pk, throw_404=True)
 
         # Make sure that the user passes the 'shared_user' POST parameter, if not, raise an exception
         if 'shared_user' not in self.request.data:
@@ -476,22 +466,8 @@ class CourseViewSet(viewsets.ModelViewSet):
             # Get the current course
             course = Course.objects.get(pk=pk)
 
-            # If the course is private ( privacy = 0 ), make the course shared ( privacy = 1 )
-            # Note: if the course is already shared, or is public, this doesn't modify it
-            if course.privacy == 0:
-                # Change the course privacy to shared
-                course.privacy = 1
-
-            # Save the course
-            course.save()
-
-            # If the course wasn't already shared with the shared user
-            if course not in shared_user.profile.shared_courses.all():
-                # Add the course to the collection of shared courses of the shared user
-                shared_user.profile.shared_courses.add(course)
-
-                # Then save the changes
-                shared_user.save()
+            # Share the course with the shared_user
+            course.share_with_user(shared_user)
 
             # Return an OK response
             return Response("OK")
@@ -510,8 +486,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         # If a parent_course is specified, check if the user is authorized to edit it
         if course.parent_course is not None:
             # If not authorized, throw an exception
-            if not Course.objects.filter(pk=course.parent_course.id) \
-                    .filter(authorized_users__in=[self.request.user]).exists():
+            if not Course.custom.check_user_is_author_of_course_id(self.request.user, course.parent_course.id):
                 raise PermissionDenied("ERROR: You can't set a parent course that you can't edit")
 
         # Save the course and add the current user to the authorized group
@@ -528,8 +503,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         # If a parent_course is specified, check if the user is authorized to edit it
         if course.parent_course is not None:
             # If not authorized, throw an exception
-            if not Course.objects.filter(pk=course.parent_course.id) \
-                    .filter(authorized_users__in=[self.request.user]).exists():
+            if not Course.custom.check_user_is_author_of_course_id(self.request.user, course.parent_course.id):
                 raise PermissionDenied("ERROR: You can't set a parent course that you can't edit")
 
         # Save the course and add the current user to the authorized group
@@ -546,34 +520,17 @@ class UserDump(APIView):
         recordings = Recording.objects.filter(user=request.user)
 
         # Get all the courses that user is authorized to view
-        courses = Course.objects.filter(authorized_users__in=[request.user])
+        courses = Course.custom.get_courses_for_user(user=request.user)
 
         # Get all the user related teachers
         teachers = Teacher.objects.filter(course__authorized_users__in=[request.user]).distinct()
 
         # Get all the shared courses of the user, but not the private ones
-        # Note: the check of the privacy status is necessary because if a user shares
-        #       a course and then makes it private again, the shared user
-        #       shouldn't be able to view it.
-        shared_courses = Course.objects.filter(id__in=request.user.profile.shared_courses.values('id'))\
-                                       .filter(privacy__gt=0)
+        shared_courses = Course.custom.get_shared_courses_for_user(request.user)
 
         # Get all the shared recordings of the user, but not the private ones
-        # Shared recordings are the union of recordings that are directly shared
-        # or recordings belonging to a shared course
-        # Note: the check of the privacy status is necessary because if a user shares
-        #       a recording and then makes it private again, the shared user
-        #       shouldn't be able to view it.
-
-        # Get the recordings shared directly with the user
-        shared_recordings_only = Recording.objects.filter(id__in=request.user.profile.shared_recordings.values('id')) \
-                                                  .filter(privacy__gt=0)
-
-        # Get the recordings belonging to a shared course
-        shared_recordings_from_courses = Recording.objects.filter(course__id__in=shared_courses.values('id'))
-
-        # Union of the two sources of recordings
-        shared_recordings = (shared_recordings_only | shared_recordings_from_courses)
+        # Note: private recordings that belong to a shared_course are included anyway
+        shared_recordings = Recording.custom.get_shared_recordings(request.user, shared_courses)
 
         # Serialize all the UserDump
         serializer = UserDumpSerializer({'recordings': recordings, 'user': request.user,
