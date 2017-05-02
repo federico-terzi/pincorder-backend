@@ -74,6 +74,21 @@ class RecordingSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'status', 'is_online', 'is_converted', 'user')
 
 
+class TeacherSerializer(serializers.ModelSerializer):
+    """
+    Serializer used to manage teachers
+    """
+
+    def get_teacher(self):
+        """
+        Return a Teacher object with the validated data, without saving it
+        """
+        return Teacher(**self.validated_data)
+
+    class Meta:
+        model = Teacher
+        fields = ('id', 'name', 'role', 'org', 'university', 'website', 'privacy')
+
 """
 The UserDump* classes are used in the UserDumpAPI, where all the information
 about the current user is returned
@@ -97,7 +112,7 @@ class UserDumpTeacherSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Teacher
-        fields = ('id', 'name')
+        fields = ('id', 'name', 'role', 'org', 'university', 'website', 'privacy')
 
 
 class UserDumpCourseSerializer(serializers.ModelSerializer):

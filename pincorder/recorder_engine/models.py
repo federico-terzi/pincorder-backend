@@ -20,7 +20,7 @@ def unique_name_generator(instance, filename):
     return os.path.join(settings.UPLOAD_MEDIA_URL, final_name)
 
 
-# Models
+# Managers
 
 class ProfileManager(models.Manager):
     """
@@ -40,6 +40,186 @@ class ProfileManager(models.Manager):
             # Save the changes
             profile.save()
 
+
+class CourseManager(models.Manager):
+    """
+    Custom Manager for the Course model
+    """
+
+    def get_courses_for_user(self, user):
+        """
+        Return the courses that the passed user is author of.
+        """
+        return self.get_queryset().filter(authorized_users__in=[user])
+
+    def get_shared_courses_for_user(self, user):
+        """
+        Return a queryset that include all the shared courses of the user, 
+        but not the private ones.
+
+        Note: the check of the privacy status is necessary because if a user shares
+              a course and then makes it private again, the shared user
+              shouldn't be able to view it. 
+        """
+        # Get all the shared courses of the user, but not the private ones
+        # Note: the check of the privacy status is necessary because if a user shares
+        #       a course and then makes it private again, the shared user
+        #       shouldn't be able to view it.
+        shared_courses = self.get_queryset().filter(id__in=user.profile.shared_courses.values('id')) \
+                                            .filter(privacy__gt=0)
+
+        return shared_courses
+
+    def check_user_is_author_of_course_id(self, user, course_id, throw_404=False):
+        """
+        Check if the passed user is the author of the course having the passed id.
+        If throw_404=True, instead of returning False, it raise an Http404 Exception.
+        """
+        # True if the course exists and the user is the author, False otherwise
+        result = self.get_queryset().filter(id=course_id) \
+                                    .filter(authorized_users__in=[user]).exists()
+
+        # If the result is True, return True
+        if result:
+            return True
+        else:
+            # If throw_404 is True, throw an Http404 exception. Return False otherwise.
+            if throw_404:
+                raise Http404("ERROR: Course doesn't exists or you're not authorized!")
+            else:
+                return False
+
+
+class TeacherManager(models.Manager):
+    """
+    Custom Manager for the Teacher model
+    """
+
+    def get_teachers_for_user(self, user):
+        """
+        Return the teachers that the passed user is author of or the teachers
+        belonging to courses viewed by the user
+        """
+        # Get the teachers the user is author of
+        author_teachers = self.get_queryset().filter(authorized_users__in=[user])
+
+        # Get the teachers belonging to the courses a user can view
+        course_teachers = Teacher.objects.filter(id__in=Course.custom.get_courses_for_user(user).values('teacher'))
+
+        # Merge the teachers
+        teachers = author_teachers | course_teachers
+
+        return teachers
+
+    def check_user_is_authorized_teacher_id(self, user, teacher_id, throw_404=False):
+        """
+        Check if the passed user is authorized to edit the teacher having the passed id.
+        If throw_404=True, instead of returning False, it raise an Http404 Exception.
+        """
+        # True if the teacher exists and the user is the author, False otherwise
+        result = self.get_queryset().filter(id=teacher_id) \
+                                    .filter(authorized_users__in=[user]).exists()
+
+        # If the result is True, return True
+        if result:
+            return True
+        else:
+            # If throw_404 is True, throw an Http404 exception. Return False otherwise.
+            if throw_404:
+                raise Http404("ERROR: Teacher doesn't exists or you're not authorized!")
+            else:
+                return False
+
+
+class RecordingManager(models.Manager):
+    """
+    Custom manager for the Recording Model
+    """
+
+    def get_recordings_for_user(self, user, include_shared=False, prefetch_related=False):
+        """
+        Return a queryset of the recordings belonging to the specified user.
+        If include_shared=True, also include the recordings shared with the user.
+        If pin_set is accessed, specify prefetch_related=True to increase efficiency.
+        """
+        # Get the recordings belonging to the user
+        user_recordings = self.get_queryset().filter(user=user)
+
+        # If prefetch_related=True, avoid lazy loading of pins.
+        if prefetch_related:
+            # Prefetch all the pins
+            user_recordings = user_recordings.prefetch_related('pin_set')
+
+        # Check if shared recording should be included
+        if include_shared:
+            # Get the shared recordings for the user
+            shared_recordings = self.get_shared_recordings(user)
+
+            # Union of the user_recordings and shared_recordings
+            recordings = user_recordings | shared_recordings
+
+            # Return the Recordings queryset
+            return recordings
+        else:
+            # Return the Recordings queryset
+            return user_recordings
+
+    def get_shared_recordings(self, user, shared_courses=None):
+        """
+        Return a queryset containing the recordings shared with the specified user.
+        If shared_courses is passed, instead of making a new query, it uses the
+        passed queryset ( Used for efficiency purposes ).
+        """
+        # For efficiency purposes, if you already calculated the shared_courses queryset,
+        # you can pass it, in this way the query isn't repeated.
+        # If the shared course queryset is not passed, make the query
+        if shared_courses is None:
+            # Get all the shared courses of the user
+            shared_courses = Course.custom.get_shared_courses_for_user(user)
+
+        # Get all the shared recordings of the user, but not the private ones
+        # Shared recordings are the union of recordings that are directly shared
+        # or recordings belonging to a shared course
+        # Note: the check of the privacy status is necessary because if a user shares
+        #       a recording and then makes it private again, the shared user
+        #       shouldn't be able to view it.
+
+        # Get the recordings shared directly with the user
+        shared_recordings_only = self.get_queryset().filter(
+            id__in=user.profile.shared_recordings.values('id')) \
+            .filter(privacy__gt=0)
+
+        # Get the recordings belonging to a shared course
+        shared_recordings_from_courses = self.get_queryset().filter(
+            course__id__in=shared_courses.values('id'))
+
+        # Union of the two sources of recordings
+        shared_recordings = (shared_recordings_only | shared_recordings_from_courses)
+
+        # Return the shared recordings
+        return shared_recordings
+
+    def check_user_is_author_of_recording_id(self, user, recording_id, throw_404=False):
+        """
+        Check if the passed user is the author of the recording having the passed id.
+        If throw_404=True, instead of returning False, it raise an Http404 Exception.
+        """
+        # True if the recording exists and the user is the author, False otherwise
+        result = self.get_queryset().filter(id=recording_id) \
+            .filter(user=user).exists()
+
+        # If the result is True, return True
+        if result:
+            return True
+        else:
+            # If throw_404 is True, throw an Http404 exception. Return False otherwise.
+            if throw_404:
+                raise Http404("ERROR: You can't access this recording or it doesn't exists")
+            else:
+                return False
+
+
+# Models
 
 class Profile(models.Model):
     """
@@ -67,6 +247,20 @@ class Profile(models.Model):
         return self.user.username
 
 
+class University(models.Model):
+    """
+    Model used to represent a University
+    """
+    # Name of the university
+    name = models.CharField(max_length=300)
+
+    # Short name of the university
+    short_name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.short_name
+
+
 class Teacher(models.Model):
     """
     Model used to represent a Teacher
@@ -74,60 +268,37 @@ class Teacher(models.Model):
     # Name of the Teacher
     name = models.CharField(max_length=300)
 
+    # Role of the teacher in the organization
+    role = models.CharField(max_length=400, blank=True)
+
+    # Organization of the teacher, relative to the university
+    org = models.CharField(max_length=400, blank=True)
+
+    # University of the teacher
+    university = models.ForeignKey('University', blank=True, null=True)
+
+    # Optional website of the teacher
+    website = models.CharField(max_length=500, blank=True)
+
+    # Represents the privacy level of the teacher
+    # 0 is private, 1 is shared, 2 is public, 3 is featured
+    privacy = models.IntegerField(default=0)
+
+    # Users that are authorized to edit the teacher
+    authorized_users = models.ManyToManyField('auth.user')
+
+    # Add the default manager
+    objects = models.Manager()
+
+    # Add the TeacherManager
+    custom = TeacherManager()
+
     def __str__(self):
         return self.name
 
     class Meta:
         # Teachers will be ordered in ascending order by the name
         ordering = ['name']
-
-
-class CourseManager(models.Manager):
-    """
-    Custom Manager for the Course model
-    """
-    def get_courses_for_user(self, user):
-        """
-        Return the courses that the passed user is author of.
-        """
-        return self.get_queryset().filter(authorized_users__in=[user])
-
-    def get_shared_courses_for_user(self, user):
-        """
-        Return a queryset that include all the shared courses of the user, 
-        but not the private ones.
-        
-        Note: the check of the privacy status is necessary because if a user shares
-              a course and then makes it private again, the shared user
-              shouldn't be able to view it. 
-        """
-        # Get all the shared courses of the user, but not the private ones
-        # Note: the check of the privacy status is necessary because if a user shares
-        #       a course and then makes it private again, the shared user
-        #       shouldn't be able to view it.
-        shared_courses = self.get_queryset().filter(id__in=user.profile.shared_courses.values('id')) \
-                                            .filter(privacy__gt=0)
-
-        return shared_courses
-
-    def check_user_is_author_of_course_id(self, user, course_id, throw_404=False):
-        """
-        Check if the passed user is the author of the course having the passed id.
-        If throw_404=True, instead of returning False, it raise an Http404 Exception.
-        """
-        # True if the course exists and the user is the author, False otherwise
-        result = self.get_queryset().filter(id=course_id)\
-                                    .filter(authorized_users__in=[user]).exists()
-
-        # If the result is True, return True
-        if result:
-            return True
-        else:
-            # If throw_404 is True, throw an Http404 exception. Return False otherwise.
-            if throw_404:
-                raise Http404("ERROR: Course doesn't exists or you're not authorized!")
-            else:
-                return False
 
 
 class Course(models.Model):
@@ -207,91 +378,6 @@ class Course(models.Model):
     class Meta:
         # Courses will be ordered in ascending order by the ID
         ordering = ['id']
-
-
-class RecordingManager(models.Manager):
-    """
-    Custom manager for the Recording Model
-    """
-    def get_recordings_for_user(self, user, include_shared=False, prefetch_related=False):
-        """
-        Return a queryset of the recordings belonging to the specified user.
-        If include_shared=True, also include the recordings shared with the user.
-        If pin_set is accessed, specify prefetch_related=True to increase efficiency.
-        """
-        # Get the recordings belonging to the user
-        user_recordings = self.get_queryset().filter(user=user)
-
-        # If prefetch_related=True, avoid lazy loading of pins.
-        if prefetch_related:
-            # Prefetch all the pins
-            user_recordings = user_recordings.prefetch_related('pin_set')
-
-        # Check if shared recording should be included
-        if include_shared:
-            # Get the shared recordings for the user
-            shared_recordings = self.get_shared_recordings(user)
-
-            # Union of the user_recordings and shared_recordings
-            recordings = user_recordings | shared_recordings
-
-            # Return the Recordings queryset
-            return recordings
-        else:
-            # Return the Recordings queryset
-            return user_recordings
-
-    def get_shared_recordings(self, user, shared_courses=None):
-        """
-        Return a queryset containing the recordings shared with the specified user.
-        If shared_courses is passed, instead of making a new query, it uses the
-        passed queryset ( Used for efficiency purposes ).
-        """
-        # For efficiency purposes, if you already calculated the shared_courses queryset,
-        # you can pass it, in this way the query isn't repeated.
-        # If the shared course queryset is not passed, make the query
-        if shared_courses is None:
-            # Get all the shared courses of the user
-            shared_courses = Course.custom.get_shared_courses_for_user(user)
-
-        # Get all the shared recordings of the user, but not the private ones
-        # Shared recordings are the union of recordings that are directly shared
-        # or recordings belonging to a shared course
-        # Note: the check of the privacy status is necessary because if a user shares
-        #       a recording and then makes it private again, the shared user
-        #       shouldn't be able to view it.
-
-        # Get the recordings shared directly with the user
-        shared_recordings_only = self.get_queryset().filter(id__in=user.profile.shared_recordings.values('id')) \
-                                                    .filter(privacy__gt=0)
-
-        # Get the recordings belonging to a shared course
-        shared_recordings_from_courses = self.get_queryset().filter(course__id__in=shared_courses.values('id'))
-
-        # Union of the two sources of recordings
-        shared_recordings = (shared_recordings_only | shared_recordings_from_courses)
-
-        # Return the shared recordings
-        return shared_recordings
-
-    def check_user_is_author_of_recording_id(self, user, recording_id, throw_404=False):
-        """
-        Check if the passed user is the author of the recording having the passed id.
-        If throw_404=True, instead of returning False, it raise an Http404 Exception.
-        """
-        # True if the recording exists and the user is the author, False otherwise
-        result = self.get_queryset().filter(id=recording_id)\
-                                    .filter(user=user).exists()
-
-        # If the result is True, return True
-        if result:
-            return True
-        else:
-            # If throw_404 is True, throw an Http404 exception. Return False otherwise.
-            if throw_404:
-                raise Http404("ERROR: You can't access this recording or it doesn't exists")
-            else:
-                return False
 
 
 class Recording(models.Model):

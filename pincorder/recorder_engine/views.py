@@ -357,7 +357,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
 class CourseViewSet(viewsets.ModelViewSet):
     """
-    Using this API you will be able to create, edit and manage Courses and Teachers.
+    Using this API you will be able to create, edit and manage Courses.
     
     [Check out the full documentation on GitHub](https://github.com/federico-terzi/pincorder-backend/wiki/Course-API)
 
@@ -509,6 +509,49 @@ class CourseViewSet(viewsets.ModelViewSet):
 
         # Save the course and add the current user to the authorized group
         course = serializer.save()
+
+
+class TeacherViewSet(viewsets.ModelViewSet):
+    """
+    Using this API you will be able to create, edit and manage Teachers.
+
+    [Check out the full documentation on GitHub]()
+
+    """
+    serializer_class = TeacherSerializer
+
+    def get_queryset(self):
+        """
+        Set the queryset for the current user 
+        """
+
+        # Return the teachers that the current user is authorized to view
+        return Teacher.custom.get_teachers_for_user(self.request.user)
+
+    def perform_create(self, serializer):
+        """
+        Called when a Teacher object is being created
+        """
+        # Get the teacher instance
+        teacher = serializer.get_teacher()
+
+        # Save the teacher and add the current user to the authorized group
+        teacher = serializer.save()
+        teacher.authorized_users.add(self.request.user)
+
+    def perform_update(self, serializer):
+        """
+        Called when a Teacher object is being updated
+        """
+        # Get the teacher instance
+        teacher = serializer.get_teacher()
+
+        # If not authorized, throw an exception
+        if not Teacher.custom.check_user_is_authorized_teacher_id(self.request.user, teacher.id):
+            raise PermissionDenied("ERROR: You are not authorized to edit this teacher")
+
+        # Save the teacher and add the current user to the authorized group
+        teacher = serializer.save()
 
 
 class UserDump(APIView):

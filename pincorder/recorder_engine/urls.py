@@ -7,6 +7,7 @@ from . import views
 router = DefaultRouter()
 router.register(r'recordings', views.RecordingViewSet, base_name="recording")
 router.register(r'courses', views.CourseViewSet, base_name="course")
+router.register(r'teachers', views.TeacherViewSet, base_name="teacher")
 
 # Define the url patterns for the API
 urlpatterns = [
