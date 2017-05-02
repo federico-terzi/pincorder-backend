@@ -422,6 +422,25 @@ class Recording(models.Model):
         """
         return self.user.id == user.id
 
+    def share_with_user(self, user):
+        """
+        Share the current recording with the passed user
+        """
+        # If the recording is private ( privacy = 0 ), make the recording shared ( privacy = 1 )
+        # Note: if the recording is already shared, or is public, this doesn't modify it
+        if self.privacy == 0:
+            # Change the recording privacy to shared
+            self.privacy = 1
+
+        # Save the recording
+        self.save()
+
+        # Add the recording to the collection of shared recordings of the user
+        user.profile.shared_recordings.add(self)
+
+        # Then save the changes
+        user.save()
+
     def __str__(self):
         return self.name
 

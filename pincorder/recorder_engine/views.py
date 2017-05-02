@@ -39,7 +39,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # Get the recordings made by the user and having a name that contains the specified param
         recordings = Recording.objects.filter(user=self.request.user) \
-                                      .filter(name__contains=request.query_params['name'])
+            .filter(name__contains=request.query_params['name'])
 
         # Serialize the data
         serializer = RecordingSerializer(recordings, many=True, context={'request': request})
@@ -54,7 +54,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # Fetch the files for the current user and Recording id
         files = RecordingFile.objects.filter(recording__user_id=self.request.user) \
-                                     .filter(recording__id=pk)
+            .filter(recording__id=pk)
 
         # Check if recording has files
         if files.count() == 0:
@@ -188,9 +188,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
                 # If the media_url param exists, update it
                 if 'media_url' in request.data:
                     # Check the media_url file format, only JPG and PNG is accepted.
-                    if not request.data['media_url'].name.endswith(".jpg") and not request.data[
-                        'media_url'].name.endswith(
-                        ".png"):
+                    if not request.data['media_url'].name.endswith(".jpg") and not request.data['media_url'].name\
+                            .endswith(".png"):
                         raise APIException("ERROR: Wrong file format!")
                     # Delete the old image
                     pin.media_url.delete()
@@ -298,22 +297,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
             # Get the current recording
             recording = Recording.objects.get(pk=pk)
 
-            # If the recording is private ( privacy = 0 ), make the recording shared ( privacy = 1 )
-            # Note: if the recording is already shared, or is public, this doesn't modify it
-            if recording.privacy == 0:
-                # Change the recording privacy to shared
-                recording.privacy = 1
-
-            # Save the recording
-            recording.save()
-
-            # If the recording wasn't already shared with the shared user
-            if recording not in shared_user.profile.shared_recordings.all():
-                # Add the recording to the collection of shared recordings of the shared user
-                shared_user.profile.shared_recordings.add(recording)
-
-                # Then save the changes
-                shared_user.save()
+            # Share the recording with the user
+            recording.share_with_user(shared_user)
 
             # Return an OK response
             return Response("OK")
@@ -544,7 +529,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
         Called when a Teacher object is being updated
         """
         # Get the teacher instance
-        teacher = serializer.get_teacher()
+        teacher = self.get_object()
 
         # If not authorized, throw an exception
         if not Teacher.custom.check_user_is_authorized_teacher_id(self.request.user, teacher.id):
@@ -552,6 +537,20 @@ class TeacherViewSet(viewsets.ModelViewSet):
 
         # Save the teacher and add the current user to the authorized group
         teacher = serializer.save()
+
+    def perform_destroy(self, instance):
+        """
+        Called when a Teacher object is being deleted
+        """
+        # Get the teacher instance
+        teacher = instance
+
+        # If not authorized, throw an exception
+        if not Teacher.custom.check_user_is_authorized_teacher_id(self.request.user, teacher.id):
+            raise PermissionDenied("ERROR: You are not authorized to delete this teacher")
+
+        # Delete the teacher
+        teacher.delete()
 
 
 class UserDump(APIView):
