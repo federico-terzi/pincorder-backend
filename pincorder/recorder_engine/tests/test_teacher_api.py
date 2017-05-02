@@ -36,6 +36,8 @@ class TeacherTest(APITestCase):
         self.course3 = Course.objects.create(name="Math", teacher=self.t3)
         self.course3.authorized_users.add(self.currentUser2)
 
+        self.publicTeacher = Teacher.objects.create(name="Jason May", privacy=3)
+
     def get_logged_client(self, user=None):
         if user is None:
             user = self.currentUser
@@ -150,3 +152,22 @@ class TeacherTest(APITestCase):
         response = client.delete('/api/teachers/'+str(self.t2.id)+'/')
 
         self.assertTrue(Teacher.objects.filter(id=self.t2.id).exists())
+
+    def test_search_contains_used_teachers(self):
+        client = self.get_logged_client()
+
+        response = client.get('/api/teachers/search_by_name/?name='+self.t1.name[0:4])
+        self.assertContains(response, self.t1.name)
+
+    def test_search_contains_public_teachers(self):
+        client = self.get_logged_client()
+
+        response = client.get('/api/teachers/search_by_name/?name='+self.publicTeacher.name[0:4])
+
+        self.assertContains(response, self.publicTeacher.name)
+
+    def test_search_not_contains_not_used_private_teacher(self):
+        client = self.get_logged_client()
+
+        response = client.get('/api/teachers/search_by_name/?name='+self.t3.name[0:4])
+        self.assertNotContains(response, self.t3.name)

@@ -513,6 +513,24 @@ class TeacherViewSet(viewsets.ModelViewSet):
         # Return the teachers that the current user is authorized to view
         return Teacher.custom.get_teachers_for_user(self.request.user)
 
+    @list_route(methods=['get'])
+    def search_by_name(self, request):
+        """
+        Search for Teachers with a name containing the specified parameter
+        """
+
+        # Make sure that the user passes the 'name' parameter, if not, raise an exception
+        if 'name' not in self.request.query_params:
+            raise APIException("ERROR: You must specify the 'name' parameter")
+
+        # Get the teachers that contain the passed 'name' in their name
+        teachers = Teacher.custom.search_by_name(name=self.request.query_params['name'], user=request.user)
+
+        # Serialize the data
+        serializer = TeacherSerializer(teachers, many=True, context={'request': request})
+
+        return Response(serializer.data)
+
     def perform_create(self, serializer):
         """
         Called when a Teacher object is being created

@@ -130,6 +130,25 @@ class TeacherManager(models.Manager):
             else:
                 return False
 
+    def search_by_name(self, name, user):
+        """
+        Return a list of Teachers that contain the passed 'name' parameter
+        """
+        # Get the teachers already used by the user
+        user_teachers = self.get_teachers_for_user(user).filter(name__contains=name)
+        
+        # Get the public teachers
+        public_teachers = self.get_queryset().filter(privacy__gte=2).filter(name__contains=name)
+
+        # Merge the teachers
+        teachers = user_teachers | public_teachers
+
+        # Order the results in descending privacy order
+        teachers = teachers.order_by('-privacy')
+
+        return teachers
+
+
 
 class RecordingManager(models.Manager):
     """
