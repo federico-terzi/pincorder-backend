@@ -149,7 +149,6 @@ class TeacherManager(models.Manager):
         return teachers
 
 
-
 class RecordingManager(models.Manager):
     """
     Custom manager for the Recording Model
@@ -362,6 +361,17 @@ class Course(models.Model):
 
         # Save the course
         self.save()
+
+        # Make the teacher shared as well
+        # Check if the teacher exists
+        if self.teacher is not None:
+            # If it exists, check compare the privacy level
+            if self.teacher.privacy < self.privacy:
+                # If the teacher privacy level is lower than course privacy level,
+                # override teacer privacy level
+                self.teacher.privacy = self.privacy
+                # Save the changes
+                self.teacher.save()
 
         # Add the course to the collection of shared courses of the shared user
         user.profile.shared_courses.add(self)

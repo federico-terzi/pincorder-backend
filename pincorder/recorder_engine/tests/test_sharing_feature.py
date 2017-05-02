@@ -54,10 +54,10 @@ class SharingTest(APITestCase):
         self.course4 = Course.objects.create(name="Physics", teacher=self.t4)
         self.course4.authorized_users.add(self.currentUser2)
 
-        self.course5 = Course.objects.create(name="Parent Course")
+        self.course5 = Course.objects.create(name="Parent Course", teacher=self.t1)
         self.course5.authorized_users.add(self.currentUser)
 
-        self.subCourse1 = Course.objects.create(name="Subcourse", parent_course=self.course5)
+        self.subCourse1 = Course.objects.create(name="Subcourse", parent_course=self.course5, teacher=self.t1)
         self.subCourse1.authorized_users.add(self.currentUser)
 
         self.subSubCourse1 = Course.objects.create(name="SubSub course", parent_course=self.subCourse1)
@@ -168,6 +168,40 @@ class SharingTest(APITestCase):
         self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.first().id, self.course1.id)
         self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 1)
 
+    def test_share_course_also_share_teacher(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 0)
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 0)
+        self.assertEqual(Course.objects.get(id=self.course1.id).teacher.privacy, 0)
+
+        response = client.post('/api/courses/' + str(self.course1.id) + '/share_course_with_user/',
+                               {'shared_user': self.currentUser2.id})
+
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 1)
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.first().id, self.course1.id)
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.course1.id).teacher.privacy, 1)
+
+    def test_share_course_doesnt_modify_public_teacher(self):
+        client = self.get_logged_client()
+
+        # Make the teacher public
+        self.course1.teacher.privacy = 2
+        self.course1.teacher.save()
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 0)
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 0)
+        self.assertEqual(Course.objects.get(id=self.course1.id).teacher.privacy, 2)
+
+        response = client.post('/api/courses/' + str(self.course1.id) + '/share_course_with_user/',
+                               {'shared_user': self.currentUser2.id})
+
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.count(), 1)
+        self.assertEqual(User.objects.get(id=self.currentUser2.id).profile.shared_courses.first().id, self.course1.id)
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.course1.id).teacher.privacy, 2)
+
     def test_share_course_should_fail_shared_user_doesnt_exists(self):
         client = self.get_logged_client()
 
@@ -242,6 +276,8 @@ class SharingTest(APITestCase):
         self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 0)
         self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 0)
         self.assertEqual(User.objects.get(id=self.currentUser3.id).profile.shared_courses.count(), 0)
+        self.assertEqual(Course.objects.get(id=self.course5.id).teacher.privacy, 0)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).teacher.privacy, 0)
 
         self.course5.share_with_user(self.currentUser3)
 
@@ -249,6 +285,8 @@ class SharingTest(APITestCase):
         self.assertEqual(Course.objects.get(id=self.course5.id).privacy, 1)
         self.assertEqual(Course.objects.get(id=self.subCourse1.id).privacy, 1)
         self.assertEqual(Course.objects.get(id=self.subSubCourse1.id).privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.course5.id).teacher.privacy, 1)
+        self.assertEqual(Course.objects.get(id=self.subCourse1.id).teacher.privacy, 1)
 
     def test_share_course_api_also_span_to_children(self):
         client = self.get_logged_client()
