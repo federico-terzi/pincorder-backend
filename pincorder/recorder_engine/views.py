@@ -39,7 +39,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # Get the recordings made by the user and having a name that contains the specified param
         recordings = Recording.objects.filter(user=self.request.user) \
-                                      .filter(name__contains=request.query_params['name'])
+            .filter(name__contains=request.query_params['name'])
 
         # Serialize the data
         serializer = RecordingSerializer(recordings, many=True, context={'request': request})
@@ -54,7 +54,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
         # Fetch the files for the current user and Recording id
         files = RecordingFile.objects.filter(recording__user_id=self.request.user) \
-                                     .filter(recording__id=pk)
+            .filter(recording__id=pk)
 
         # Check if recording has files
         if files.count() == 0:
@@ -188,9 +188,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
                 # If the media_url param exists, update it
                 if 'media_url' in request.data:
                     # Check the media_url file format, only JPG and PNG is accepted.
-                    if not request.data['media_url'].name.endswith(".jpg") and not request.data[
-                        'media_url'].name.endswith(
-                        ".png"):
+                    if not request.data['media_url'].name.endswith(".jpg") and not request.data['media_url'].name\
+                            .endswith(".png"):
                         raise APIException("ERROR: Wrong file format!")
                     # Delete the old image
                     pin.media_url.delete()
@@ -244,8 +243,11 @@ class RecordingViewSet(viewsets.ModelViewSet):
         # Get the data from the batch POST parameter
         data = self.request.data['batch']
 
+        # Get the current recording
+        recording = Recording.objects.get(pk=pk)
+
         # Get the pins of the current recording
-        pins = Recording.objects.get(pk=pk).pin_set.all()
+        pins = recording.pin_set.all()
 
         # Initialize a list that will hold the pins
         output_data = []
@@ -267,13 +269,23 @@ class RecordingViewSet(viewsets.ModelViewSet):
                 output_data.append(d)
 
         # Create the serializer with the output_data
+        # Note: must use output_data instead of data because the serializer
+        # doesn't accept existing pin update
         serializer = PinSerializer(data=output_data, many=True, context={'request': request})
 
         # If it's valid, save the pins
         if serializer.is_valid():
             serializer.save()
 
-        return Response(serializer.data)
+        # Current pin_batch contain the recording id and the batch list
+        pin_batch = {'recording': recording,
+                     'batch': recording.pin_set.all()}
+
+        # Get the pin batch serializer
+        batch_serializer = UserDumpPinBatchSerializer(pin_batch)
+
+        # Return the serialized pin batch
+        return Response(batch_serializer.data)
 
     @detail_route(methods=['post'])
     def share_recording_with_user(self, request, pk=None):
@@ -298,22 +310,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
             # Get the current recording
             recording = Recording.objects.get(pk=pk)
 
-            # If the recording is private ( privacy = 0 ), make the recording shared ( privacy = 1 )
-            # Note: if the recording is already shared, or is public, this doesn't modify it
-            if recording.privacy == 0:
-                # Change the recording privacy to shared
-                recording.privacy = 1
-
-            # Save the recording
-            recording.save()
-
-            # If the recording wasn't already shared with the shared user
-            if recording not in shared_user.profile.shared_recordings.all():
-                # Add the recording to the collection of shared recordings of the shared user
-                shared_user.profile.shared_recordings.add(recording)
-
-                # Then save the changes
-                shared_user.save()
+            # Share the recording with the user
+            recording.share_with_user(shared_user)
 
             # Return an OK response
             return Response("OK")
@@ -357,7 +355,7 @@ class RecordingViewSet(viewsets.ModelViewSet):
 
 class CourseViewSet(viewsets.ModelViewSet):
     """
-    Using this API you will be able to create, edit and manage Courses and Teachers.
+    Using this API you will be able to create, edit and manage Courses.
     
     [Check out the full documentation on GitHub](https://github.com/federico-terzi/pincorder-backend/wiki/Course-API)
 
@@ -511,13 +509,108 @@ class CourseViewSet(viewsets.ModelViewSet):
         course = serializer.save()
 
 
+class TeacherViewSet(viewsets.ModelViewSet):
+    """
+    Using this API you will be able to create, edit and manage Teachers.
+
+    [Check out the full documentation on GitHub]()
+
+    """
+    serializer_class = TeacherSerializer
+
+    def get_queryset(self):
+        """
+        Set the queryset for the current user 
+        """
+
+        # Return the teachers that the current user is authorized to view
+        return Teacher.custom.get_teachers_for_user(self.request.user)
+
+    @list_route(methods=['get'])
+    def search_by_name(self, request):
+        """
+        Search for Teachers with a name containing the specified parameter
+        """
+
+        # Make sure that the user passes the 'name' parameter, if not, raise an exception
+        if 'name' not in self.request.query_params:
+            raise APIException("ERROR: You must specify the 'name' parameter")
+
+        # Get the teachers that contain the passed 'name' in their name
+        teachers = Teacher.custom.search_by_name(name=self.request.query_params['name'], user=request.user)
+
+        # Serialize the data
+        serializer = TeacherSerializer(teachers, many=True, context={'request': request})
+
+        return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        """
+        Called when a Teacher object is being created
+        """
+        # Get the teacher instance
+        teacher = serializer.get_teacher()
+
+        # Save the teacher and add the current user to the authorized group
+        teacher = serializer.save()
+        teacher.authorized_users.add(self.request.user)
+
+        # Check if the privacy level is equal or higher than Featured
+        if teacher.privacy >= settings.FEATURED_PRIVACY_LEVEL:
+            # If so, check that the user is an admin
+            if not self.request.user.is_staff:
+                # If user is not an admin, override the privacy level to the maximum allowed by a normal user
+                teacher.privacy = settings.PUBLIC_PRIVACY_LEVEL
+
+                # Save the teacher
+                teacher.save()
+
+    def perform_update(self, serializer):
+        """
+        Called when a Teacher object is being updated
+        """
+        # Get the teacher instance
+        teacher = self.get_object()
+
+        # If not authorized, throw an exception
+        if not Teacher.custom.check_user_is_authorized_teacher_id(self.request.user, teacher.id):
+            raise PermissionDenied("ERROR: You are not authorized to edit this teacher")
+
+        # Save the teacher
+        teacher = serializer.save()
+
+        # Check if the privacy level is equal or higher than Featured
+        if teacher.privacy >= settings.FEATURED_PRIVACY_LEVEL:
+            # If so, check that the user is an admin
+            if not self.request.user.is_staff:
+                # If user is not an admin, override the privacy level to the maximum allowed by a normal user
+                teacher.privacy = settings.PUBLIC_PRIVACY_LEVEL
+
+                # Save the teacher
+                teacher.save()
+
+    def perform_destroy(self, instance):
+        """
+        Called when a Teacher object is being deleted
+        """
+        # Get the teacher instance
+        teacher = instance
+
+        # If not authorized, throw an exception
+        if not Teacher.custom.check_user_is_authorized_teacher_id(self.request.user, teacher.id):
+            raise PermissionDenied("ERROR: You are not authorized to delete this teacher")
+
+        # Delete the teacher
+        teacher.delete()
+
+
 class UserDump(APIView):
     """
     This API is used to retrive all the profile, courses and recordings information for the current user
     """
 
     def get(self, request, format=None):
-        # Get all the recordings for the current user
+        # Get all the recordings for the current user, pre-fetching the pin_set for better efficiency
         recordings = Recording.custom.get_recordings_for_user(request.user, prefetch_related=True)
 
         # Calculate all the pins
@@ -537,7 +630,7 @@ class UserDump(APIView):
         courses = Course.custom.get_courses_for_user(user=request.user)
 
         # Get all the user related teachers
-        teachers = Teacher.objects.filter(course__authorized_users__in=[request.user]).distinct()
+        teachers = Teacher.custom.get_teachers_for_user(user=request.user)
 
         # Get all the shared courses of the user, but not the private ones
         shared_courses = Course.custom.get_shared_courses_for_user(request.user)

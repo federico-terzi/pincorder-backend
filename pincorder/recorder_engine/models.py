@@ -20,7 +20,7 @@ def unique_name_generator(instance, filename):
     return os.path.join(settings.UPLOAD_MEDIA_URL, final_name)
 
 
-# Models
+# Managers
 
 class ProfileManager(models.Manager):
     """
@@ -41,62 +41,33 @@ class ProfileManager(models.Manager):
             profile.save()
 
 
-class Profile(models.Model):
-    """
-    Model connected to a user and represents the user profile data
-    """
-    # User to which the Profile belongs to
-    user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-    )
-
-    # Shared Recordings with the user
-    shared_recordings = models.ManyToManyField('Recording', blank=True)
-
-    # Shared courses with the user
-    shared_courses = models.ManyToManyField('Course', blank=True)
-
-    # Add the default manager
-    objects = models.Manager()
-
-    # Add the ProfileManager
-    custom = ProfileManager()
-
-    def __str__(self):
-        return self.user.username
-
-
-class Teacher(models.Model):
-    """
-    Model used to represent a Teacher
-    """
-    # Name of the Teacher
-    name = models.CharField(max_length=300)
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        # Teachers will be ordered in ascending order by the name
-        ordering = ['name']
-
-
 class CourseManager(models.Manager):
     """
     Custom Manager for the Course model
     """
-    def get_courses_for_user(self, user):
+
+    def get_courses_for_user(self, user, include_shared=False):
         """
         Return the courses that the passed user is author of.
         """
-        return self.get_queryset().filter(authorized_users__in=[user])
+        # Get the courses the user is author of
+        courses = self.get_queryset().filter(authorized_users__in=[user])
+
+        # If include_shared is true, also include courses shared with the user
+        if include_shared:
+            # Get the courses shared with the user
+            shared_courses = self.get_shared_courses_for_user(user)
+
+            # Merge the querysets
+            courses = shared_courses | courses
+
+        return courses
 
     def get_shared_courses_for_user(self, user):
         """
         Return a queryset that include all the shared courses of the user, 
         but not the private ones.
-        
+
         Note: the check of the privacy status is necessary because if a user shares
               a course and then makes it private again, the shared user
               shouldn't be able to view it. 
@@ -116,7 +87,7 @@ class CourseManager(models.Manager):
         If throw_404=True, instead of returning False, it raise an Http404 Exception.
         """
         # True if the course exists and the user is the author, False otherwise
-        result = self.get_queryset().filter(id=course_id)\
+        result = self.get_queryset().filter(id=course_id) \
                                     .filter(authorized_users__in=[user]).exists()
 
         # If the result is True, return True
@@ -130,89 +101,75 @@ class CourseManager(models.Manager):
                 return False
 
 
-class Course(models.Model):
+class TeacherManager(models.Manager):
     """
-    Model used to represent a Course
+    Custom Manager for the Teacher model
     """
-    # The name of the course
-    name = models.CharField(max_length=200)
 
-    # The teacher of the course. Can be null
-    teacher = models.ForeignKey('Teacher', blank=True, null=True)
-
-    # The parent course of the current course. Can be null.
-    # To get all the children of a course use Course.children.all()
-    parent_course = models.ForeignKey('self', blank=True, null=True, related_name='children')
-
-    # Users that are authorized to view the course
-    authorized_users = models.ManyToManyField('auth.user')
-
-    # Represents the privacy level of the course
-    # 0 is private, 1 is shared and 2 is public
-    privacy = models.IntegerField(default=0)
-
-    # Add the default manager
-    objects = models.Manager()
-
-    # Add the CourseManager
-    custom = CourseManager()
-
-    def __str__(self):
-        return self.name
-
-    def share_with_user(self, user):
+    def get_teachers_for_user(self, user, include_shared=True):
         """
-        Share the current course with the passed user
+        Return the teachers that the passed user is author of or the teachers
+        belonging to courses viewed by the user.
+        If include_shared=True, also include teachers of courses shared with the user
         """
-        # If the course is private ( privacy = 0 ), make the course shared ( privacy = 1 )
-        # Note: if the course is already shared, or is public, this doesn't modify it
-        if self.privacy == 0:
-            # Change the course privacy to shared
-            self.privacy = 1
+        # Get the teachers the user is author of
+        author_teachers = self.get_queryset().filter(authorized_users__in=[user])
 
-        # Save the course
-        self.save()
+        # Get the teachers belonging to the courses a user can view
+        course_teachers = Teacher.objects.filter(id__in=Course.custom.get_courses_for_user(user, include_shared).values('teacher'))
 
-        # Add the course to the collection of shared courses of the shared user
-        user.profile.shared_courses.add(self)
+        # Merge the teachers
+        teachers = author_teachers | course_teachers
 
-        # Then save the changes
-        user.save()
+        # Delete duplicates
+        teachers = teachers.distinct()
 
-        # Share all the subcourses
-        for course in self.children.all():
-            course.share_with_user(user)
+        return teachers
 
-    def save(self, *args, **kwargs):
+    def check_user_is_authorized_teacher_id(self, user, teacher_id, throw_404=False):
         """
-        Override default save method for the course model
+        Check if the passed user is authorized to edit the teacher having the passed id.
+        If throw_404=True, instead of returning False, it raise an Http404 Exception.
         """
-        # Check if a parent_course is present
-        if self.parent_course is not None:
-            # Get the privacy level of the parent course
-            privacy = self.parent_course.privacy
+        # True if the teacher exists and the user is the author, False otherwise
+        result = self.get_queryset().filter(id=teacher_id) \
+                                    .filter(authorized_users__in=[user]).exists()
 
-            # If the parent course is not private, but this course is private,
-            # make this course the same privacy level than the parent
-            # NOTE: This have some consequences:
-            # 1 - A course CANNOT be private if the parent is shared
-            # 2 - A course CAN be public if the parent is shared or private
-            if privacy > 0 and self.privacy == 0:
-                # Make the privacy level the same as the parent
-                self.privacy = privacy
+        # If the result is True, return True
+        if result:
+            return True
+        else:
+            # If throw_404 is True, throw an Http404 exception. Return False otherwise.
+            if throw_404:
+                raise Http404("ERROR: Teacher doesn't exists or you're not authorized!")
+            else:
+                return False
 
-        # Call the default save method
-        super(Course, self).save(*args, **kwargs)
+    def search_by_name(self, name, user):
+        """
+        Return a list of Teachers that contain the passed 'name' parameter
+        """
+        # Get the teachers already used by the user
+        user_teachers = self.get_teachers_for_user(user).filter(name__contains=name)
+        
+        # Get the public teachers
+        # Note: the distinct() is needed for the join with user_teachers
+        public_teachers = self.get_queryset().filter(privacy__gte=2).filter(name__contains=name).distinct()
 
-    class Meta:
-        # Courses will be ordered in ascending order by the ID
-        ordering = ['id']
+        # Merge the teachers
+        teachers = user_teachers | public_teachers
+
+        # Order the results in descending privacy order
+        teachers = teachers.order_by('-privacy')
+
+        return teachers
 
 
 class RecordingManager(models.Manager):
     """
     Custom manager for the Recording Model
     """
+
     def get_recordings_for_user(self, user, include_shared=False, prefetch_related=False):
         """
         Return a queryset of the recordings belonging to the specified user.
@@ -262,11 +219,13 @@ class RecordingManager(models.Manager):
         #       shouldn't be able to view it.
 
         # Get the recordings shared directly with the user
-        shared_recordings_only = self.get_queryset().filter(id__in=user.profile.shared_recordings.values('id')) \
-                                                    .filter(privacy__gt=0)
+        shared_recordings_only = self.get_queryset().filter(
+            id__in=user.profile.shared_recordings.values('id')) \
+            .filter(privacy__gt=0)
 
         # Get the recordings belonging to a shared course
-        shared_recordings_from_courses = self.get_queryset().filter(course__id__in=shared_courses.values('id'))
+        shared_recordings_from_courses = self.get_queryset().filter(
+            course__id__in=shared_courses.values('id'))
 
         # Union of the two sources of recordings
         shared_recordings = (shared_recordings_only | shared_recordings_from_courses)
@@ -280,8 +239,8 @@ class RecordingManager(models.Manager):
         If throw_404=True, instead of returning False, it raise an Http404 Exception.
         """
         # True if the recording exists and the user is the author, False otherwise
-        result = self.get_queryset().filter(id=recording_id)\
-                                    .filter(user=user).exists()
+        result = self.get_queryset().filter(id=recording_id) \
+            .filter(user=user).exists()
 
         # If the result is True, return True
         if result:
@@ -292,6 +251,178 @@ class RecordingManager(models.Manager):
                 raise Http404("ERROR: You can't access this recording or it doesn't exists")
             else:
                 return False
+
+
+# Models
+
+class Profile(models.Model):
+    """
+    Model connected to a user and represents the user profile data
+    """
+    # User to which the Profile belongs to
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+    )
+
+    # Shared Recordings with the user
+    shared_recordings = models.ManyToManyField('Recording', blank=True)
+
+    # Shared courses with the user
+    shared_courses = models.ManyToManyField('Course', blank=True)
+
+    # Add the default manager
+    objects = models.Manager()
+
+    # Add the ProfileManager
+    custom = ProfileManager()
+
+    def __str__(self):
+        return self.user.username
+
+
+class University(models.Model):
+    """
+    Model used to represent a University
+    """
+    # Name of the university
+    name = models.CharField(max_length=300)
+
+    # Short name of the university
+    short_name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.short_name
+
+
+class Teacher(models.Model):
+    """
+    Model used to represent a Teacher
+    """
+    # Name of the Teacher
+    name = models.CharField(max_length=300)
+
+    # Role of the teacher in the organization
+    role = models.CharField(max_length=400, blank=True)
+
+    # Organization of the teacher, relative to the university
+    org = models.CharField(max_length=400, blank=True)
+
+    # University of the teacher
+    university = models.ForeignKey('University', blank=True, null=True)
+
+    # Optional website of the teacher
+    website = models.CharField(max_length=500, blank=True)
+
+    # Represents the privacy level of the teacher
+    # 0 is private, 1 is shared, 2 is public, 3 is featured
+    privacy = models.IntegerField(default=0)
+
+    # Users that are authorized to edit the teacher
+    authorized_users = models.ManyToManyField('auth.user')
+
+    # Add the default manager
+    objects = models.Manager()
+
+    # Add the TeacherManager
+    custom = TeacherManager()
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        # Teachers will be ordered in ascending order by the name
+        ordering = ['name']
+
+
+class Course(models.Model):
+    """
+    Model used to represent a Course
+    """
+    # The name of the course
+    name = models.CharField(max_length=200)
+
+    # The teacher of the course. Can be null
+    teacher = models.ForeignKey('Teacher', blank=True, null=True)
+
+    # The parent course of the current course. Can be null.
+    # To get all the children of a course use Course.children.all()
+    parent_course = models.ForeignKey('self', blank=True, null=True, related_name='children')
+
+    # Users that are authorized to view the course
+    authorized_users = models.ManyToManyField('auth.user')
+
+    # Represents the privacy level of the course
+    # 0 is private, 1 is shared and 2 is public
+    privacy = models.IntegerField(default=0)
+
+    # Add the default manager
+    objects = models.Manager()
+
+    # Add the CourseManager
+    custom = CourseManager()
+
+    def __str__(self):
+        return self.name
+
+    def share_with_user(self, user):
+        """
+        Share the current course with the passed user
+        """
+        # If the course is private ( privacy = 0 ), make the course shared ( privacy = 1 )
+        # Note: if the course is already shared, or is public, this doesn't modify it
+        if self.privacy == 0:
+            # Change the course privacy to shared
+            self.privacy = 1
+
+        # Save the course
+        self.save()
+
+        # Make the teacher shared as well
+        # Check if the teacher exists
+        if self.teacher is not None:
+            # If it exists, check compare the privacy level
+            if self.teacher.privacy < self.privacy:
+                # If the teacher privacy level is lower than course privacy level,
+                # override teacer privacy level
+                self.teacher.privacy = self.privacy
+                # Save the changes
+                self.teacher.save()
+
+        # Add the course to the collection of shared courses of the shared user
+        user.profile.shared_courses.add(self)
+
+        # Then save the changes
+        user.save()
+
+        # Share all the subcourses
+        for course in self.children.all():
+            course.share_with_user(user)
+
+    def save(self, *args, **kwargs):
+        """
+        Override default save method for the course model
+        """
+        # Check if a parent_course is present
+        if self.parent_course is not None:
+            # Get the privacy level of the parent course
+            privacy = self.parent_course.privacy
+
+            # If the parent course is not private, but this course is private,
+            # make this course the same privacy level than the parent
+            # NOTE: This have some consequences:
+            # 1 - A course CANNOT be private if the parent is shared
+            # 2 - A course CAN be public if the parent is shared or private
+            if privacy > 0 and self.privacy == 0:
+                # Make the privacy level the same as the parent
+                self.privacy = privacy
+
+        # Call the default save method
+        super(Course, self).save(*args, **kwargs)
+
+    class Meta:
+        # Courses will be ordered in ascending order by the ID
+        ordering = ['id']
 
 
 class Recording(models.Model):
@@ -335,6 +466,25 @@ class Recording(models.Model):
         Check if the passed user is the author of the recording
         """
         return self.user.id == user.id
+
+    def share_with_user(self, user):
+        """
+        Share the current recording with the passed user
+        """
+        # If the recording is private ( privacy = 0 ), make the recording shared ( privacy = 1 )
+        # Note: if the recording is already shared, or is public, this doesn't modify it
+        if self.privacy == 0:
+            # Change the recording privacy to shared
+            self.privacy = 1
+
+        # Save the recording
+        self.save()
+
+        # Add the recording to the collection of shared recordings of the user
+        user.profile.shared_recordings.add(self)
+
+        # Then save the changes
+        user.save()
 
     def __str__(self):
         return self.name

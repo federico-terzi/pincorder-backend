@@ -333,6 +333,18 @@ class CourseTest(APITestCase):
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Course.objects.filter(id=self.course1.id).exists())
 
+    def test_delete_course_should_fail_user_not_authorized_but_shared(self):
+        client = self.get_logged_client(self.currentUser2)
+
+        self.course1.share_with_user(self.currentUser2)
+
+        self.assertTrue(Course.objects.filter(id=self.course1.id).exists())
+
+        response = client.delete('/api/courses/{id}/'.format(id=self.course1.id))
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Course.objects.filter(id=self.course1.id).exists())
+
     def test_delete_course_should_fail_course_doesnt_exist(self):
         client = self.get_logged_client(self.currentUser2)
 
