@@ -266,6 +266,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
                 output_data.append(d)
 
         # Create the serializer with the output_data
+        # Note: must use output_data instead of data because the serializer
+        # doesn't accept existing pin update
         serializer = PinSerializer(data=output_data, many=True, context={'request': request})
 
         # If it's valid, save the pins

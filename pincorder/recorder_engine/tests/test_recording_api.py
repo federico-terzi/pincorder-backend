@@ -47,9 +47,9 @@ class RecordingTest(APITestCase):
         self.r1 = r1
 
         # Add pins to r1
-        pin1 = Pin.objects.create(recording=r1, time=10, text="Explanation 1")
-        pin2 = Pin.objects.create(recording=r1, time=50, media_url="url_to_img.jpg")
-        pin3 = Pin.objects.create(recording=r1, time=100, text="Explanation 2")
+        self.pin1 = Pin.objects.create(recording=r1, time=10, text="Explanation 1")
+        self.pin2 = Pin.objects.create(recording=r1, time=50, media_url="url_to_img.jpg")
+        self.pin3 = Pin.objects.create(recording=r1, time=100, text="Explanation 2")
 
         # Add recordings for testuser2
         r4 = Recording.objects.create(name="Test2 Registration", date=timezone.now(),
@@ -413,6 +413,38 @@ class RecordingTest(APITestCase):
         self.assertEqual(pin.text, 'Test Pin 2')
         self.assertEqual(pin.recording, self.r1)
         self.assertEqual(pin.time, 250)
+
+    def test_edit_multiple_pins_to_recording(self):
+        client = self.get_logged_client()
+
+        pin = Pin.objects.get(id=self.pin1.id)
+
+        self.assertEqual(pin.text, 'Explanation 1')
+        self.assertEqual(pin.recording, self.r1)
+        self.assertEqual(pin.time, 10)
+
+        pin = Pin.objects.get(id=self.pin3.id)
+
+        self.assertEqual(pin.text, 'Explanation 2')
+        self.assertEqual(pin.recording, self.r1)
+        self.assertEqual(pin.time, 100)
+
+        response = client.post('/api/recordings/{id}/add_pin_batch/'.format(id=self.r1.id),
+                               {'batch': [{'time': 10, 'text': 'Test Pin'}, {'time': 100, 'text': 'Test Pin 2'}]})
+
+        #print(response.content)
+
+        pin = Pin.objects.get(id=self.pin1.id)
+
+        self.assertEqual(pin.text, 'Test Pin')
+        self.assertEqual(pin.recording, self.r1)
+        self.assertEqual(pin.time, 10)
+
+        pin = Pin.objects.get(id=self.pin3.id)
+
+        self.assertEqual(pin.text, 'Test Pin 2')
+        self.assertEqual(pin.recording, self.r1)
+        self.assertEqual(pin.time, 100)
 
     def test_add_multiple_pins_to_recording_with_update(self):
         client = self.get_logged_client()
