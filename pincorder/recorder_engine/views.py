@@ -243,8 +243,11 @@ class RecordingViewSet(viewsets.ModelViewSet):
         # Get the data from the batch POST parameter
         data = self.request.data['batch']
 
+        # Get the current recording
+        recording = Recording.objects.get(pk=pk)
+
         # Get the pins of the current recording
-        pins = Recording.objects.get(pk=pk).pin_set.all()
+        pins = recording.pin_set.all()
 
         # Initialize a list that will hold the pins
         output_data = []
@@ -274,7 +277,15 @@ class RecordingViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             serializer.save()
 
-        return Response(serializer.data)
+        # Current pin_batch contain the recording id and the batch list
+        pin_batch = {'recording': recording,
+                     'batch': recording.pin_set.all()}
+
+        # Get the pin batch serializer
+        batch_serializer = UserDumpPinBatchSerializer(pin_batch)
+
+        # Return the serialized pin batch
+        return Response(batch_serializer.data)
 
     @detail_route(methods=['post'])
     def share_recording_with_user(self, request, pk=None):

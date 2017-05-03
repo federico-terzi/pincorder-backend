@@ -432,7 +432,7 @@ class RecordingTest(APITestCase):
         response = client.post('/api/recordings/{id}/add_pin_batch/'.format(id=self.r1.id),
                                {'batch': [{'time': 10, 'text': 'Test Pin'}, {'time': 100, 'text': 'Test Pin 2'}]})
 
-        #print(response.content)
+        print(response.content)
 
         pin = Pin.objects.get(id=self.pin1.id)
 
