@@ -113,6 +113,36 @@ class RecordingTest(APITestCase):
         self.assertEqual(lastRecording.user, self.currentUser)
         self.assertEqual(lastRecording.course, self.course1)
 
+    def test_add_recording_privacy_cant_be_featured_user_not_staff(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/', {'name': 'Test Recording', 'date': timezone.now(),
+                                                    'course': self.course1.id,
+                                                    'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        lastRecording = Recording.objects.get(id=response.data['id'])
+
+        self.assertEqual(lastRecording.name, 'Test Recording')
+        self.assertEqual(lastRecording.user, self.currentUser)
+        self.assertEqual(lastRecording.course, self.course1)
+        self.assertEqual(lastRecording.privacy, settings.PUBLIC_PRIVACY_LEVEL)
+
+    def test_add_recording_privacy_can_be_featured_user_is_staff(self):
+        client = self.get_logged_client()
+
+        self.currentUser.is_staff = True
+        self.currentUser.save()
+
+        response = client.post('/api/recordings/', {'name': 'Test Recording', 'date': timezone.now(),
+                                                    'course': self.course1.id,
+                                                    'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        lastRecording = Recording.objects.get(id=response.data['id'])
+
+        self.assertEqual(lastRecording.name, 'Test Recording')
+        self.assertEqual(lastRecording.user, self.currentUser)
+        self.assertEqual(lastRecording.course, self.course1)
+        self.assertEqual(lastRecording.privacy, settings.FEATURED_PRIVACY_LEVEL)
+
     def test_add_recording_without_course(self):
         client = self.get_logged_client()
         response = client.post('/api/recordings/', {'name': 'Test Recording', 'date': timezone.now()})
@@ -136,6 +166,31 @@ class RecordingTest(APITestCase):
         recording = Recording.objects.first()
 
         self.assertEqual(recording.name, 'New Name')
+
+    def test_edit_recording_privacy_cant_be_featured_user_not_staff(self):
+        client = self.get_logged_client()
+        response = client.patch('/api/recordings/' + str(self.r1.id) + '/',
+                                {'name': 'New Name', 'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        lastRecording = Recording.objects.get(id=response.data['id'])
+
+        self.assertEqual(lastRecording.name, 'New Name')
+        self.assertEqual(lastRecording.privacy, settings.PUBLIC_PRIVACY_LEVEL)
+
+    def test_edit_recording_privacy_can_be_featured_user_is_staff(self):
+        client = self.get_logged_client()
+
+        self.currentUser.is_staff = True
+        self.currentUser.save()
+
+        client = self.get_logged_client()
+        response = client.patch('/api/recordings/' + str(self.r1.id) + '/',
+                                {'name': 'New Name', 'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        lastRecording = Recording.objects.get(id=response.data['id'])
+
+        self.assertEqual(lastRecording.name, 'New Name')
+        self.assertEqual(lastRecording.privacy, settings.FEATURED_PRIVACY_LEVEL)
 
     def test_make_recording_shared(self):
         client = self.get_logged_client()

@@ -121,6 +121,25 @@ class CourseTest(APITestCase):
         # Check if user is added to authorized users
         self.assertIn(self.currentUser, Course.objects.get(name='Course 1').authorized_users.all())
 
+    def test_add_course_if_not_staff_privacy_cant_be_higher_than_featured(self):
+        client = self.get_logged_client()
+
+        response = client.post('/api/courses/',
+                                {'name': 'New Course', 'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        self.assertEqual(Course.objects.get(id=response.data['id']).privacy, settings.PUBLIC_PRIVACY_LEVEL)
+
+    def test_add_course_if_staff_privacy_can_be_featured(self):
+        client = self.get_logged_client()
+
+        self.currentUser.is_staff = True
+        self.currentUser.save()
+
+        response = client.post('/api/courses/',
+                               {'name': 'New Course', 'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        self.assertEqual(Course.objects.get(id=response.data['id']).privacy, settings.FEATURED_PRIVACY_LEVEL)
+
     def test_add_course_should_fail_unauthorized_parent(self):
         client = self.get_logged_client()
         response = client.post('/api/courses/', {'name': 'Course 1', 'teacher': self.t1.id,
@@ -204,6 +223,29 @@ class CourseTest(APITestCase):
                                 {'name': 'Course 1', 'teacher': self.t2.id})
 
         self.assertEqual(Course.objects.get(id=self.course1.id).teacher, self.t2)
+
+    def test_edit_course_if_not_staff_privacy_cant_be_higher_than_featured(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 0)
+
+        response = client.patch('/api/courses/' + str(self.course1.id) + '/',
+                                {'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, settings.PUBLIC_PRIVACY_LEVEL)
+
+    def test_edit_course_if_staff_privacy_can_be_featured(self):
+        client = self.get_logged_client()
+
+        self.currentUser.is_staff = True
+        self.currentUser.save()
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, 0)
+
+        response = client.patch('/api/courses/' + str(self.course1.id) + '/',
+                                {'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        self.assertEqual(Course.objects.get(id=self.course1.id).privacy, settings.FEATURED_PRIVACY_LEVEL)
 
     def test_make_course_shared(self):
         client = self.get_logged_client()

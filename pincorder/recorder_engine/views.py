@@ -334,7 +334,17 @@ class RecordingViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("You're not allowed to write in this course!")
 
         # If the user is authorized, save the recording
-        serializer.save(user=self.request.user)
+        recording = serializer.save(user=self.request.user)
+
+        # Check if the privacy level is equal or higher than Featured
+        if recording.privacy >= settings.FEATURED_PRIVACY_LEVEL:
+            # If so, check that the user is an admin
+            if not self.request.user.is_staff:
+                # If user is not an admin, override the privacy level to the maximum allowed by a normal user
+                recording.privacy = settings.PUBLIC_PRIVACY_LEVEL
+
+                # Save the teacher
+                recording.save()
 
     def perform_update(self, serializer):
         """
@@ -350,7 +360,17 @@ class RecordingViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("You're not allowed to write in this course!")
 
         # If the user is authorized, save the recording
-        serializer.save()
+        recording = serializer.save()
+
+        # Check if the privacy level is equal or higher than Featured
+        if recording.privacy >= settings.FEATURED_PRIVACY_LEVEL:
+            # If so, check that the user is an admin
+            if not self.request.user.is_staff:
+                # If user is not an admin, override the privacy level to the maximum allowed by a normal user
+                recording.privacy = settings.PUBLIC_PRIVACY_LEVEL
+
+                # Save the teacher
+                recording.save()
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -492,6 +512,16 @@ class CourseViewSet(viewsets.ModelViewSet):
         course = serializer.save()
         course.authorized_users.add(self.request.user)
 
+        # Check if the privacy level is equal or higher than Featured
+        if course.privacy >= settings.FEATURED_PRIVACY_LEVEL:
+            # If so, check that the user is an admin
+            if not self.request.user.is_staff:
+                # If user is not an admin, override the privacy level to the maximum allowed by a normal user
+                course.privacy = settings.PUBLIC_PRIVACY_LEVEL
+
+                # Save the teacher
+                course.save()
+
     def perform_update(self, serializer):
         """
         Called when a Course object is being updated
@@ -507,6 +537,16 @@ class CourseViewSet(viewsets.ModelViewSet):
 
         # Save the course and add the current user to the authorized group
         course = serializer.save()
+
+        # Check if the privacy level is equal or higher than Featured
+        if course.privacy >= settings.FEATURED_PRIVACY_LEVEL:
+            # If so, check that the user is an admin
+            if not self.request.user.is_staff:
+                # If user is not an admin, override the privacy level to the maximum allowed by a normal user
+                course.privacy = settings.PUBLIC_PRIVACY_LEVEL
+
+                # Save the teacher
+                course.save()
 
 
 class TeacherViewSet(viewsets.ModelViewSet):
