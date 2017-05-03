@@ -36,6 +36,10 @@ ALLOWED_HOSTS = [PINCORDER_DOMAIN, 'localhost']
 # IPs authorized by the django toolbar
 INTERNAL_IPS = ['127.0.0.1']
 
+# Pincorder Settings
+
+PUBLIC_PRIVACY_LEVEL = 2
+FEATURED_PRIVACY_LEVEL = 10
 
 # Application definition
 

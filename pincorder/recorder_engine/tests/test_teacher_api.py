@@ -36,7 +36,7 @@ class TeacherTest(APITestCase):
         self.course3 = Course.objects.create(name="Math", teacher=self.t3)
         self.course3.authorized_users.add(self.currentUser2)
 
-        self.publicTeacher = Teacher.objects.create(name="Jason May", privacy=3)
+        self.publicTeacher = Teacher.objects.create(name="Jason May", privacy=settings.FEATURED_PRIVACY_LEVEL)
 
     def get_logged_client(self, user=None):
         if user is None:
@@ -117,6 +117,25 @@ class TeacherTest(APITestCase):
 
         self.assertIn(self.currentUser, Teacher.objects.get(name="New Teacher").authorized_users.all())
 
+    def test_create_teacher_if_not_staff_privacy_cant_be_higher_than_featured(self):
+        client = self.get_logged_client()
+
+        response = client.post('/api/teachers/', {'name': 'New Teacher', 'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        self.assertEqual(Teacher.objects.get(id=response.data['id']).privacy, settings.PUBLIC_PRIVACY_LEVEL)
+
+    def test_create_teacher_if_staff_privacy_can_be_featured(self):
+        client = self.get_logged_client()
+
+        self.currentUser.is_staff=True
+        self.currentUser.save()
+
+        client = self.get_logged_client()
+
+        response = client.post('/api/teachers/', {'name': 'New Teacher', 'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        self.assertEqual(Teacher.objects.get(id=response.data['id']).privacy, settings.FEATURED_PRIVACY_LEVEL)
+
     def test_edit_teacher(self):
         client = self.get_logged_client()
 
@@ -125,6 +144,27 @@ class TeacherTest(APITestCase):
         response = client.patch('/api/teachers/'+str(self.t1.id)+'/', {'name': 'New Teacher'})
 
         self.assertEqual(Teacher.objects.get(id=self.t1.id).name, 'New Teacher')
+
+    def test_edit_teacher_if_not_staff_privacy_cant_be_higher_than_featured(self):
+        client = self.get_logged_client()
+
+        self.assertEqual(Teacher.objects.get(id=self.t1.id).privacy, 0)
+
+        response = client.patch('/api/teachers/'+str(self.t1.id)+'/', {'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        self.assertEqual(Teacher.objects.get(id=self.t1.id).privacy, settings.PUBLIC_PRIVACY_LEVEL)
+
+    def test_edit_teacher_if_staff_privacy_can_be_featured(self):
+        client = self.get_logged_client()
+
+        self.currentUser.is_staff=True
+        self.currentUser.save()
+
+        self.assertEqual(Teacher.objects.get(id=self.t1.id).privacy, 0)
+
+        response = client.patch('/api/teachers/' + str(self.t1.id) + '/', {'privacy': settings.FEATURED_PRIVACY_LEVEL})
+
+        self.assertEqual(Teacher.objects.get(id=self.t1.id).privacy, settings.FEATURED_PRIVACY_LEVEL)
 
     def test_edit_teacher_should_fail_not_teacher_author(self):
         client = self.get_logged_client()

@@ -542,6 +542,16 @@ class TeacherViewSet(viewsets.ModelViewSet):
         teacher = serializer.save()
         teacher.authorized_users.add(self.request.user)
 
+        # Check if the privacy level is equal or higher than Featured
+        if teacher.privacy >= settings.FEATURED_PRIVACY_LEVEL:
+            # If so, check that the user is an admin
+            if not self.request.user.is_staff:
+                # If user is not an admin, override the privacy level to the maximum allowed by a normal user
+                teacher.privacy = settings.PUBLIC_PRIVACY_LEVEL
+
+                # Save the teacher
+                teacher.save()
+
     def perform_update(self, serializer):
         """
         Called when a Teacher object is being updated
@@ -553,8 +563,18 @@ class TeacherViewSet(viewsets.ModelViewSet):
         if not Teacher.custom.check_user_is_authorized_teacher_id(self.request.user, teacher.id):
             raise PermissionDenied("ERROR: You are not authorized to edit this teacher")
 
-        # Save the teacher and add the current user to the authorized group
+        # Save the teacher
         teacher = serializer.save()
+
+        # Check if the privacy level is equal or higher than Featured
+        if teacher.privacy >= settings.FEATURED_PRIVACY_LEVEL:
+            # If so, check that the user is an admin
+            if not self.request.user.is_staff:
+                # If user is not an admin, override the privacy level to the maximum allowed by a normal user
+                teacher.privacy = settings.PUBLIC_PRIVACY_LEVEL
+
+                # Save the teacher
+                teacher.save()
 
     def perform_destroy(self, instance):
         """
@@ -577,7 +597,7 @@ class UserDump(APIView):
     """
 
     def get(self, request, format=None):
-        # Get all the recordings for the current user
+        # Get all the recordings for the current user, pre-fetching the pin_set for better efficiency
         recordings = Recording.custom.get_recordings_for_user(request.user, prefetch_related=True)
 
         # Calculate all the pins
@@ -597,7 +617,7 @@ class UserDump(APIView):
         courses = Course.custom.get_courses_for_user(user=request.user)
 
         # Get all the user related teachers
-        teachers = Teacher.objects.filter(course__authorized_users__in=[request.user]).distinct()
+        teachers = Teacher.custom.get_teachers_for_user(user=request.user)
 
         # Get all the shared courses of the user, but not the private ones
         shared_courses = Course.custom.get_shared_courses_for_user(request.user)

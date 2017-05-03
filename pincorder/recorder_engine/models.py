@@ -46,11 +46,22 @@ class CourseManager(models.Manager):
     Custom Manager for the Course model
     """
 
-    def get_courses_for_user(self, user):
+    def get_courses_for_user(self, user, include_shared=False):
         """
         Return the courses that the passed user is author of.
         """
-        return self.get_queryset().filter(authorized_users__in=[user])
+        # Get the courses the user is author of
+        courses = self.get_queryset().filter(authorized_users__in=[user])
+
+        # If include_shared is true, also include courses shared with the user
+        if include_shared:
+            # Get the courses shared with the user
+            shared_courses = self.get_shared_courses_for_user(user)
+
+            # Merge the querysets
+            courses = shared_courses | courses
+
+        return courses
 
     def get_shared_courses_for_user(self, user):
         """
@@ -95,19 +106,23 @@ class TeacherManager(models.Manager):
     Custom Manager for the Teacher model
     """
 
-    def get_teachers_for_user(self, user):
+    def get_teachers_for_user(self, user, include_shared=True):
         """
         Return the teachers that the passed user is author of or the teachers
-        belonging to courses viewed by the user
+        belonging to courses viewed by the user.
+        If include_shared=True, also include teachers of courses shared with the user
         """
         # Get the teachers the user is author of
         author_teachers = self.get_queryset().filter(authorized_users__in=[user])
 
         # Get the teachers belonging to the courses a user can view
-        course_teachers = Teacher.objects.filter(id__in=Course.custom.get_courses_for_user(user).values('teacher'))
+        course_teachers = Teacher.objects.filter(id__in=Course.custom.get_courses_for_user(user, include_shared).values('teacher'))
 
         # Merge the teachers
         teachers = author_teachers | course_teachers
+
+        # Delete duplicates
+        teachers = teachers.distinct()
 
         return teachers
 
@@ -138,7 +153,8 @@ class TeacherManager(models.Manager):
         user_teachers = self.get_teachers_for_user(user).filter(name__contains=name)
         
         # Get the public teachers
-        public_teachers = self.get_queryset().filter(privacy__gte=2).filter(name__contains=name)
+        # Note: the distinct() is needed for the join with user_teachers
+        public_teachers = self.get_queryset().filter(privacy__gte=2).filter(name__contains=name).distinct()
 
         # Merge the teachers
         teachers = user_teachers | public_teachers
