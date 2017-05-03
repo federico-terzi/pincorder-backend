@@ -150,11 +150,11 @@ class TeacherManager(models.Manager):
         Return a list of Teachers that contain the passed 'name' parameter
         """
         # Get the teachers already used by the user
-        user_teachers = self.get_teachers_for_user(user).filter(name__contains=name)
+        user_teachers = self.get_teachers_for_user(user).filter(name__icontains=name)
         
         # Get the public teachers
         # Note: the distinct() is needed for the join with user_teachers
-        public_teachers = self.get_queryset().filter(privacy__gte=2).filter(name__contains=name).distinct()
+        public_teachers = self.get_queryset().filter(privacy__gte=2).filter(name__icontains=name).distinct()
 
         # Merge the teachers
         teachers = user_teachers | public_teachers
