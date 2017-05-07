@@ -124,8 +124,11 @@ class RecordingViewSet(viewsets.ModelViewSet):
         pins = Pin.objects.filter(recording__user_id=self.request.user) \
             .filter(recording_id=pk).order_by('time')
 
+        # Get the recording
+        recording = Recording.objects.get(pk=pk)
+
         # Get the serializer
-        serializer = PinSerializer(pins, many=True, context={'request': request})
+        serializer = UserDumpPinBatchSerializer({'recording': recording, 'batch': pins}, context={'request': request})
 
         # Return the response
         return Response(serializer.data)

@@ -310,11 +310,11 @@ class RecordingTest(APITestCase):
         client = self.get_logged_client()
         response = client.get('/api/recordings/' + str(self.r1.id) + '/get_pins/')
 
-        self.assertDictContainsSubset({'time': 10, 'text': 'Explanation 1', 'media_url': None}, response.data[0])
+        self.assertDictContainsSubset({'time': 10, 'text': 'Explanation 1', 'media_url': None}, response.data['batch'][0])
         self.assertDictContainsSubset({'time': 50, 'text': '',
                                        'media_url': 'http://testserver/media/url_to_img.jpg'},
-                                      response.data[1])
-        self.assertDictContainsSubset({'time': 100, 'text': 'Explanation 2', 'media_url': None}, response.data[2])
+                                      response.data['batch'][1])
+        self.assertDictContainsSubset({'time': 100, 'text': 'Explanation 2', 'media_url': None}, response.data['batch'][2])
 
     def test_add_pin_to_recording(self):
         client = self.get_logged_client()
