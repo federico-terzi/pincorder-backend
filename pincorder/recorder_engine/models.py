@@ -157,10 +157,10 @@ class TeacherManager(models.Manager):
         public_teachers = self.get_queryset().filter(privacy__gte=2).filter(name__icontains=name).distinct()
 
         # Merge the teachers
-        teachers = user_teachers | public_teachers
+        teachers = (user_teachers | public_teachers)
 
-        # Order the results in descending privacy order
-        teachers = teachers.order_by('-privacy')
+        # Order the results in descending privacy order, limiting the result number to TEACHER_SEARCH_RESULT_LIMIT
+        teachers = teachers.order_by('-privacy')[:settings.TEACHER_SEARCH_RESULT_LIMIT]
 
         return teachers
 

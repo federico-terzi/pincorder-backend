@@ -211,3 +211,12 @@ class TeacherTest(APITestCase):
 
         response = client.get('/api/teachers/search_by_name/?name='+self.t3.name[0:4])
         self.assertNotContains(response, self.t3.name)
+
+    def test_search_limit_results(self):
+        client = self.get_logged_client()
+
+        for i in range(100):
+            Teacher.objects.create(name="Bob Marley"+str(i), privacy=2)
+
+        response = client.get('/api/teachers/search_by_name/?name=Bob')
+        self.assertEqual(len(response.data), settings.TEACHER_SEARCH_RESULT_LIMIT)
