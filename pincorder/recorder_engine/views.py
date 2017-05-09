@@ -262,11 +262,18 @@ class RecordingViewSet(viewsets.ModelViewSet):
             try:
                 # If it exists, update the text
                 pin = pins.get(time=d['time'])
-                if 'text' in d:
-                    pin.text = d['text']
+
+                # If the "deleted" tag is included, delete the pin
+                if 'deleted' in d:
+                    # Delete the pin
+                    pin.delete()
                 else:
-                    pin.text = ""
-                pin.save()
+                    # If pin is not deleted, check for updates
+                    if 'text' in d:
+                        pin.text = d['text']
+                    else:
+                        pin.text = ""
+                    pin.save()
             except Pin.DoesNotExist:
                 # If the pin doesn't already exist in the database, append it to output_data
                 output_data.append(d)
