@@ -263,8 +263,8 @@ class RecordingViewSet(viewsets.ModelViewSet):
                 # If it exists, update the text
                 pin = pins.get(time=d['time'])
 
-                # If the "deleted" tag is included, delete the pin
-                if 'deleted' in d:
+                # If the "deleted" tag is included and true, delete the pin
+                if 'deleted' in d and d['deleted']:
                     # Delete the pin
                     pin.delete()
                 else:

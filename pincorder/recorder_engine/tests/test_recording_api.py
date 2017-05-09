@@ -530,6 +530,16 @@ class RecordingTest(APITestCase):
 
         self.assertFalse(Pin.objects.filter(recording__id=self.r1.id, time=10).exists())
 
+    def test_delete_multiple_pins_to_recording_should_not_delete_if_false(self):
+        client = self.get_logged_client()
+
+        self.assertTrue(Pin.objects.filter(recording__id=self.r1.id, time=10).exists())
+
+        response = client.post('/api/recordings/{id}/add_pin_batch/'.format(id=self.r1.id),
+                               {'batch': [{'time': 10, 'deleted': False}]})
+
+        self.assertTrue(Pin.objects.filter(recording__id=self.r1.id, time=10).exists())
+
     def test_delete_multiple_pins_to_recording_with_create(self):
         client = self.get_logged_client()
 
@@ -542,6 +552,18 @@ class RecordingTest(APITestCase):
         self.assertFalse(Pin.objects.filter(recording__id=self.r1.id, time=10).exists())
         self.assertTrue(Pin.objects.filter(recording__id=self.r1.id, time=250).exists())
 
+    def test_delete_multiple_pins_to_recording_with_create_should_not_delete_if_false(self):
+        client = self.get_logged_client()
+
+        self.assertTrue(Pin.objects.filter(recording__id=self.r1.id, time=10).exists())
+        self.assertFalse(Pin.objects.filter(recording__id=self.r1.id, time=250).exists())
+
+        response = client.post('/api/recordings/{id}/add_pin_batch/'.format(id=self.r1.id),
+                               {'batch': [{'time': 10, 'deleted': False}, {'time': 250, 'text': 'Test Pin 2'}]})
+
+        self.assertTrue(Pin.objects.filter(recording__id=self.r1.id, time=10).exists())
+        self.assertTrue(Pin.objects.filter(recording__id=self.r1.id, time=250).exists())
+
     def test_delete_multiple_pins_to_recording_with_update(self):
         client = self.get_logged_client()
 
@@ -552,6 +574,18 @@ class RecordingTest(APITestCase):
                                {'batch': [{'time': 10, 'deleted': True}, {'time': 50, 'text': 'Test Pin 2'}]})
 
         self.assertFalse(Pin.objects.filter(recording__id=self.r1.id, time=10).exists())
+        self.assertEqual(Pin.objects.get(recording__id=self.r1.id, time=50).text, 'Test Pin 2')
+
+    def test_delete_multiple_pins_to_recording_with_update_should_not_delete_if_false(self):
+        client = self.get_logged_client()
+
+        self.assertTrue(Pin.objects.filter(recording__id=self.r1.id, time=10).exists())
+        self.assertEqual(Pin.objects.get(recording__id=self.r1.id, time=50).text, self.pin2.text)
+
+        response = client.post('/api/recordings/{id}/add_pin_batch/'.format(id=self.r1.id),
+                               {'batch': [{'time': 10, 'deleted': False}, {'time': 50, 'text': 'Test Pin 2'}]})
+
+        self.assertTrue(Pin.objects.filter(recording__id=self.r1.id, time=10).exists())
         self.assertEqual(Pin.objects.get(recording__id=self.r1.id, time=50).text, 'Test Pin 2')
 
     def test_add_multiple_pins_should_fail_for_not_id(self):
