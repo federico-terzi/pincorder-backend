@@ -681,7 +681,8 @@ class UniversityViewSet(viewsets.ReadOnlyModelViewSet):
         query = self.request.query_params['name']
 
         # Get the universities that contain the query in the name or the short_name ( case insensitive ).
-        universities = University.objects.filter(Q(name__icontains=query) | Q(short_name__icontains=query)).all()
+        # Limit the result number to UNIVERSITIES_SEARCH_RESULT_LIMIT, defined in the settings
+        universities = University.objects.filter(Q(name__icontains=query) | Q(short_name__icontains=query))[:settings.UNIVERSITIES_SEARCH_RESULT_LIMIT]
 
         # Serialize the data
         serializer = UniversitySerializer(universities, many=True, context={'request': request})

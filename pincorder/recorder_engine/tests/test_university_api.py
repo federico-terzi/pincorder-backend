@@ -113,6 +113,17 @@ class UniversityTest(APITestCase):
 
         self.assertEqual(len(response.data), 3)
 
+    def test_search_universities_result_limit(self):
+        client = self.get_logged_client()
+
+        # Create 100 new universities
+        for i in range(100):
+            University.objects.create(name="University "+str(i), short_name="UNI"+str(i))
+
+        response = client.get("/api/uni/search/?name=uNi")
+
+        self.assertEqual(len(response.data), settings.UNIVERSITIES_SEARCH_RESULT_LIMIT)
+
     def test_search_university_should_fail_name_not_provided(self):
         client = self.get_logged_client()
 
