@@ -5,7 +5,7 @@ from django.db import models
 from django.conf import settings
 from django.http import Http404
 from django.utils.timezone import now
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 
@@ -568,33 +568,41 @@ def recording_file_post_delete_handler(sender, **kwargs):
 # Signals used to keep the profile in sync with the user
 
 @receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
+def create_user_profile(sender, instance, created, raw, **kwargs):
     """
     When a new user is created, create a new profile linked to it
     """
-    if created:
+    # Make sure to avoid this while loading data from a fixture.
+    # In that case, raw = True
+    if created and not raw:
+        # Create a new profile
         Profile.objects.create(user=instance)
-        #pass
 
 
 @receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
+def save_user_profile(sender, instance, raw, **kwargs):
     """
     When a user is updated, save the profile
     """
-    instance.profile.save()
+    # Make sure to avoid this while loading data from a fixture.
+    # In that case, raw = True
+    if not raw:
+        # Save the profile
+        instance.profile.save()
 
 # Signals used to manage the shared courses
 
 
 @receiver(post_save, sender=Course)
-def save_course_with_shared_parent_add_to_all_shared_users(sender, instance, created, **kwargs):
+def save_course_with_shared_parent_add_to_all_shared_users(sender, instance, created, raw, **kwargs):
     """
     When a course is created or updated and has a shared parent course
     it becomes shared as well.
     """
     # Check if the course has a parent_course
-    if instance.parent_course is not None:
+    # Make sure to avoid this while loading data from a fixture.
+    # In that case, raw = True
+    if instance.parent_course is not None and not raw:
         # Get the privacy of the parent_course
         privacy = instance.parent_course.privacy
 
