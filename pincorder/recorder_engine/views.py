@@ -1,5 +1,5 @@
 from django.contrib.auth.models import AnonymousUser
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Q
 from django.http import Http404
 from rest_framework import viewsets
 from rest_framework.decorators import list_route, detail_route, parser_classes
@@ -657,6 +657,36 @@ class TeacherViewSet(viewsets.ModelViewSet):
 
         # Delete the teacher
         teacher.delete()
+
+
+class UniversityViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    The Universities ViewSet, used to retrieve and get universities information.
+    """
+
+    queryset = University.objects.all()
+    serializer_class = UniversitySerializer
+
+    @list_route(methods=['get'])
+    def search(self, request):
+        """
+        Search for Universities with a name, or short_name, containing the specified parameter
+        """
+
+        # Make sure that the user passes the 'name' parameter, if not, raise an exception
+        if 'name' not in self.request.query_params:
+            raise APIException("ERROR: You must specify the 'name' parameter")
+
+        # Get the query name
+        query = self.request.query_params['name']
+
+        # Get the universities that contain the query in the name or the short_name ( case insensitive ).
+        universities = University.objects.filter(Q(name__icontains=query) | Q(short_name__icontains=query)).all()
+
+        # Serialize the data
+        serializer = UniversitySerializer(universities, many=True, context={'request': request})
+
+        return Response(serializer.data)
 
 
 class UserDump(APIView):
