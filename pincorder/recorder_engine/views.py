@@ -276,7 +276,12 @@ class RecordingViewSet(viewsets.ModelViewSet):
                     pin.save()
             except Pin.DoesNotExist:
                 # If the pin doesn't already exist in the database, append it to output_data
-                output_data.append(d)
+                # Unless the "deleted: true" tag was included
+                if 'deleted' in d and d['deleted']:
+                    pass
+                else:
+                    # Append it to output_data
+                    output_data.append(d)
 
         # Create the serializer with the output_data
         # Note: must use output_data instead of data because the serializer

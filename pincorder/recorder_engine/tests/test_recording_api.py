@@ -469,6 +469,20 @@ class RecordingTest(APITestCase):
         self.assertEqual(pin.recording, self.r1)
         self.assertEqual(pin.time, 250)
 
+    def test_add_multiple_pins_to_recording_with_deleted_tag_should_not_create_one(self):
+        client = self.get_logged_client()
+        response = client.post('/api/recordings/{id}/add_pin_batch/'.format(id=self.r1.id),
+                               {'batch': [{'time': 200, 'text': 'Test Pin', 'deleted': True},
+                                          {'time': 250, 'text': 'Test Pin 2'}]})
+
+        self.assertFalse(Pin.objects.filter(text='Test Pin').exists())
+
+        pin = Pin.objects.get(text='Test Pin 2')
+
+        self.assertEqual(pin.text, 'Test Pin 2')
+        self.assertEqual(pin.recording, self.r1)
+        self.assertEqual(pin.time, 250)
+
     def test_edit_multiple_pins_to_recording(self):
         client = self.get_logged_client()
 
