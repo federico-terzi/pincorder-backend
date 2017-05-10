@@ -89,6 +89,16 @@ class TeacherSerializer(serializers.ModelSerializer):
         model = Teacher
         fields = ('id', 'name', 'role', 'org', 'university', 'website', 'privacy')
 
+
+class UniversitySerializer(serializers.ModelSerializer):
+    """
+    Serializer used to manage Universities
+    """
+
+    class Meta:
+        model = University
+        fields = ('id', 'name', 'short_name')
+
 """
 The UserDump* classes are used in the UserDumpAPI, where all the information
 about the current user is returned

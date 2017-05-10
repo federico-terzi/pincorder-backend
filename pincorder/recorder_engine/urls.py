@@ -8,6 +8,7 @@ router = DefaultRouter()
 router.register(r'recordings', views.RecordingViewSet, base_name="recording")
 router.register(r'courses', views.CourseViewSet, base_name="course")
 router.register(r'teachers', views.TeacherViewSet, base_name="teacher")
+router.register(r'uni', views.UniversityViewSet, base_name="uni")
 
 # Define the url patterns for the API
 urlpatterns = [
