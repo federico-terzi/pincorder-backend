@@ -436,9 +436,6 @@ class Recording(models.Model):
     # Date of the recording
     date = models.DateTimeField()
 
-    # A string that rapresents the current status of the recording
-    status = models.CharField(max_length=200, default="SUBMITTED")
-
     # True if the recording file is online
     is_online = models.BooleanField(default=False)
 

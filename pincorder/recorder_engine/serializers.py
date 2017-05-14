@@ -70,8 +70,8 @@ class RecordingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recording
-        fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'user', 'privacy')
-        read_only_fields = ('id', 'status', 'is_online', 'is_converted', 'user')
+        fields = ('id', 'name', 'date', 'course', 'is_online', 'is_converted', 'user', 'privacy')
+        read_only_fields = ('id', 'is_online', 'is_converted', 'user')
 
 
 class TeacherSerializer(serializers.ModelSerializer):
@@ -171,7 +171,7 @@ class UserDumpRecordingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recording
-        fields = ('id', 'name', 'date', 'course', 'status', 'is_online', 'is_converted', 'privacy')
+        fields = ('id', 'name', 'date', 'course', 'is_online', 'is_converted', 'privacy')
 
 
 class UserDumpSerializer(serializers.Serializer):

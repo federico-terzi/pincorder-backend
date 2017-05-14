@@ -85,7 +85,7 @@ class RecordingTest(APITestCase):
         client = self.get_logged_client()
         response = client.get('/api/recordings/' + str(self.r1.id) + '/')
 
-        self.assertDictContainsSubset({'name': 'First Registration', 'status': 'SUBMITTED', 'is_online': False,
+        self.assertDictContainsSubset({'name': 'First Registration', 'is_online': False,
                                        'is_converted': False, 'course': self.course1.id, 'privacy': 0}, response.data)
 
     def test_recording_should_not_exist(self):
