@@ -109,10 +109,49 @@ class RecordingViewSet(viewsets.ModelViewSet):
             # Save and get the RecordingFile
             file = serializer.save()
 
+            # Get the recording
+            recording = Recording.objects.get(id=pk)
+
+            # Set the recording "is_online" status to True
+            recording.is_online = True
+
+            # Save the recording
+            recording.save()
+
             # Return the response
             return Response(serializer.data)
         else:
             raise APIException("ERROR: " + str(serializer.errors))
+
+    @detail_route(methods=['delete'])
+    def delete_file(self, request, pk=None):
+        """
+        Delete uploaded recording file of a recording
+        """
+        # Check if the user is the author of the recording, if not throw and exception
+        Recording.custom.check_user_is_author_of_recording_id(user=request.user, recording_id=pk, throw_404=True)
+
+        # Check if the file exists. If not, raise an exception
+        if not RecordingFile.objects.filter(recording_id=pk).exists():
+            raise APIException("ERROR: The file doesn't exists")
+
+        # Get the recording file
+        recording_file = RecordingFile.objects.get(recording_id=pk)
+
+        # Delete the recording file
+        recording_file.delete()
+
+        # Get the recording
+        recording = Recording.objects.get(id=pk)
+
+        # Set the recording "is_online" status to False
+        recording.is_online = False
+
+        # Save the recording
+        recording.save()
+
+        # Return an OK response
+        return Response('OK')
 
     @detail_route(methods=['get'])
     def get_pins(self, request, pk=None):

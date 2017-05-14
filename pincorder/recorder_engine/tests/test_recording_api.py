@@ -631,12 +631,17 @@ class RecordingTest(APITestCase):
 
     def test_upload_file(self):
         client = self.get_logged_client()
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
         response = client.post('/api/recordings/{id}/upload_file/'.format(id=self.r1.id),
                                {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
                                format='multipart')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.r1.recordingfile.file_url.url, response.data['file_url'])
+
+        self.assertTrue(Recording.objects.get(id=self.r1.id).is_online)
 
         filename = '/'.join(response.data['file_url'].split('/')[-2:])
         self.assertTrue(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
@@ -646,6 +651,9 @@ class RecordingTest(APITestCase):
 
     def test_upload_file_already_exist_should_fail(self):
         client = self.get_logged_client()
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
         response = client.post('/api/recordings/{id}/upload_file/'.format(id=self.r1.id),
                                {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
                                format='multipart')
@@ -664,9 +672,14 @@ class RecordingTest(APITestCase):
 
     def test_upload_file_wrong_format_should_fail(self):
         client = self.get_logged_client()
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
         response = client.post('/api/recordings/{id}/upload_file/'.format(id=self.r1.id),
                                {'file_url': open('recorder_engine/tests/wrong.png', 'rb')},
                                format='multipart')
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
 
         self.assertEqual(response.status_code, 500)
 
@@ -680,8 +693,109 @@ class RecordingTest(APITestCase):
 
     def test_upload_file_without_params_should_fail(self):
         client = self.get_logged_client()
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
         response = client.post('/api/recordings/{id}/upload_file/'.format(id=self.r1.id),
                                {'file_url': ''},
                                format='multipart')
 
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
         self.assertEqual(response.status_code, 500)
+
+    def test_upload_file_to_not_authorized_should_fail(self):
+        client = self.get_logged_client(self.currentUser2)
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
+        response = client.post('/api/recordings/{id}/upload_file/'.format(id=self.r1.id),
+                               {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                               format='multipart')
+
+        self.assertEqual(response.status_code, 404)
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
+    def test_delete_file(self):
+        client = self.get_logged_client()
+
+        # Upload the file
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
+        response = client.post('/api/recordings/{id}/upload_file/'.format(id=self.r1.id),
+                               {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                               format='multipart')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.r1.recordingfile.file_url.url, response.data['file_url'])
+
+        self.assertTrue(Recording.objects.get(id=self.r1.id).is_online)
+
+        filename = '/'.join(response.data['file_url'].split('/')[-2:])
+        self.assertTrue(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
+
+        # Delete the file
+
+        response = client.delete('/api/recordings/{id}/delete_file/'.format(id=self.r1.id))
+
+        self.assertFalse(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
+    def test_delete_file_not_authorized_should_fail(self):
+        client = self.get_logged_client()
+
+        # Upload the file
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
+        response = client.post('/api/recordings/{id}/upload_file/'.format(id=self.r1.id),
+                               {'file_url': open('recorder_engine/tests/test.mp3', 'rb')},
+                               format='multipart')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.r1.recordingfile.file_url.url, response.data['file_url'])
+
+        self.assertTrue(Recording.objects.get(id=self.r1.id).is_online)
+
+        filename = '/'.join(response.data['file_url'].split('/')[-2:])
+        self.assertTrue(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
+
+        # Change to client not authorized
+
+        client = self.get_logged_client(self.currentUser2)
+
+        # Delete the file
+
+        response = client.delete('/api/recordings/{id}/delete_file/'.format(id=self.r1.id))
+
+        self.assertEqual(response.status_code, 404)
+
+        self.assertTrue(os.path.isfile(os.path.join(settings.MEDIA_ROOT, filename)))
+        self.assertTrue(Recording.objects.get(id=self.r1.id).is_online)
+
+    def test_delete_file_without_file_should_fail(self):
+        client = self.get_logged_client()
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
+        response = client.delete('/api/recordings/{id}/delete_file/'.format(id=self.r1.id))
+
+        self.assertFalse(Recording.objects.get(id=self.r1.id).is_online)
+
+        self.assertEqual(response.status_code, 500)
+
+    def test_delete_file_not_existing_recording_should_fail(self):
+        client = self.get_logged_client()
+
+        response = client.delete('/api/recordings/1231231/delete_file/')
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_file_wrong_method_should_fail(self):
+        client = self.get_logged_client()
+
+        response = client.post('/api/recordings/{id}/delete_file/'.format(id=self.r1.id))
+
+        self.assertEqual(response.status_code, 405)
