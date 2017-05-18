@@ -170,6 +170,9 @@ MEDIA_URL = '/media/'
 UPLOAD_MEDIA_URL =  "raw_upload/"
 
 # CORS settings
+
+CORS_ORIGIN_ALLOW_ALL = True
+
 CORS_ORIGIN_WHITELIST = (
     'localhost:3000',
     'web.freddytstudio.com',
