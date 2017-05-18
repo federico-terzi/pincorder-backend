@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'oauth2_provider',
     'social_django',
+    'corsheaders',
     'rest_framework_social_oauth2',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -64,6 +65,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -166,6 +168,14 @@ MEDIA_URL = '/media/'
 
 # Directory where raw recordings are stored
 UPLOAD_MEDIA_URL =  "raw_upload/"
+
+# CORS settings
+CORS_ORIGIN_WHITELIST = (
+    'localhost:3000',
+    'web.freddytstudio.com',
+    'localhost:8000',
+    '127.0.0.1:9000'
+)
 
 # Rest Framework settings
 REST_FRAMEWORK = {
